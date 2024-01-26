@@ -47,7 +47,7 @@ class WebScraper:
 
     async def __get_file(self, name, store):
         #chunk_size = 64*1024*1024
-        chunk_size=128*1024
+        chunk_size=2*1024*1024
         await write_log(message=f'Zip download started at: {dt.datetime.now()}',severity=SEVERITY.INFO)
         timeout=aiohttp.ClientTimeout(total=60*60,sock_read=240)
         async with aiohttp.ClientSession(timeout=timeout).get(name) as response:
