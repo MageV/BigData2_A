@@ -7,8 +7,8 @@ from apputils.archivers import ArchiveManager
 from apputils.log import write_log
 from apputils.observers import ZipFileObserver
 from config.appconfig import *
-from importers.webparser import WebScraper
-from importers.xmlparser import XmlReadSingle
+from parsers.webparser import WebScraper
+from parsers.xmlparser import XmlReadSingle
 
 if __name__ == '__main__':
 
