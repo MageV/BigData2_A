@@ -12,18 +12,6 @@ from config.appconfig import *
 
 class _ZipFileHandler(FileSystemEventHandler):
 
-    def on_modified(self, event):
-        super().on_modified(event)
-        __filesize: int = 0
-        filename: str = event.src_path
-        if filename.__contains__('_new.zip') and event.is_directory != True:
-            try:
-                zip_file = os.open(filename, 'r')
-                os.close(zip_file)
-                logger.info(f'file closed:{filename}')
-            except:
-                pass
-
     def on_created(self, event):
         super().on_created(event)
         filename: str = event.src_path
@@ -35,8 +23,8 @@ class _ZipFileHandler(FileSystemEventHandler):
         filename: str = event.src_path
         if filename.__contains__('zip'):
             logger.info(f'file closed:{filename}')
-            archive_manager=ArchiveManager()
-            archive_manager.extract(source=filename,dest=XML_STORE)
+            archive_manager = ArchiveManager()
+            archive_manager.extract(source=filename, dest=XML_STORE)
             asyncio.run(write_log(message=f'file unpacked:{filename}', severity=SEVERITY.INFO))
 
 
