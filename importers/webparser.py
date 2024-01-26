@@ -48,7 +48,7 @@ class WebScraper:
     async def __get_file(self, name, store):
         #chunk_size = 64*1024*1024
         chunk_size=128*1024
-        await write_log(message=f'Zip download started at {dt.datetime.now()}',severity=SEVERITY.INFO)
+        await write_log(message=f'Zip download started at: {dt.datetime.now()}',severity=SEVERITY.INFO)
         timeout=aiohttp.ClientTimeout(total=60*60,sock_read=240)
         async with aiohttp.ClientSession(timeout=timeout).get(name) as response:
             async with aiofiles.open(store, mode="wb") as f:
@@ -58,18 +58,11 @@ class WebScraper:
                     if not chunk:
                         break
                     await f.write(chunk)
-        await write_log(message=f'Zip download completed at {dt.datetime.now()}',severity=SEVERITY.INFO)
+        await write_log(message=f'Zip download completed at: {dt.datetime.now()}',severity=SEVERITY.INFO)
 
     def get(self):
         asyncio.run(self.__getHtml())
         file = self.__parseHtml()
         asyncio.run(self.__get_file(name=file, store=f'{ZIP_FOIV}{str(uuid1())}_new.zip'))
-        #asyncio.run(self.__getfile(name=file,store=f'{ZIP_FOIV}{str(uuid1())}_new.zip'))
         return True
 
-    async def __getfile(self,name,store):
-        await write_log(message=f'Zip download started at {dt.datetime.now()}', severity=SEVERITY.INFO)
-        parameters=f'--remote-name {name}'
-        process=await asyncio.create_subprocess_exec('/home/master/anaconda3/bin/curl',parameters)
-        await process.communicate()
-        await write_log(message=f'Zip download completed at {dt.datetime.now()}', severity=SEVERITY.INFO)
