@@ -27,7 +27,7 @@ class _ZipFileHandler(FileSystemEventHandler):
                 for item in handle.namelist():
                     handle.extractall(item,XML_STORE)
                     os.remove(filename)
-                    asyncio.run(write_log(message=f'file unpacked:{filename}',severity=SEVERITY.INFO))
+            asyncio.run(write_log(message=f'file unpacked:{filename}',severity=SEVERITY.INFO))
 
 
 
