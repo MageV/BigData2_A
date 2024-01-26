@@ -3,7 +3,6 @@ from enum import Enum, auto
 ZIP_FOIV='data/zips/'
 XML_STORE='data/unpacked/'
 JSON_STORE_CONFIG='data/config/json.config'
-XML_FOIV='data/savedxml/'
 URL='https://www.nalog.gov.ru/opendata/7707329152-rsmp/'
 LOG_FILE='data/logs/applog.log'
 

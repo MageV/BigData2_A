@@ -12,14 +12,14 @@ import datetime as dt
 
 class WebScraper:
 
-    def __init__(self, url='', path=XML_FOIV):
+    def __init__(self, url=''):
         self.__headers = {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.9; rv:45.0) Gecko/20100101 Firefox/45.0'
         }
         if url == '':
             self.__url = URL
         self.__html = ""
-        self.__path = path
+      #  self.__path = path
 
     async def __getHtml(self):
         async  with aiohttp.ClientSession() as session:
