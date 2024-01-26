@@ -1,3 +1,5 @@
+import multiprocessing
+from concurrent.futures import ProcessPoolExecutor
 from enum import Enum, auto
 
 ZIP_FOIV = 'data/zips/'
@@ -5,7 +7,8 @@ XML_STORE = 'data/unpacked/'
 JSON_STORE_CONFIG = 'data/config/json.config'
 URL = 'https://www.nalog.gov.ru/opendata/7707329152-rsmp/'
 LOG_FILE = 'data/logs/applog.log'
-APP_FILE_DEBUG = True
+APP_FILE_DEBUG = False
+XML_FILE_DEBUG=True
 APP_FILE_DEBUG_NAME = ZIP_FOIV + '53120a20-bc2d-11ee-97b7-1e08f320e7c5_new.zip'
 
 
@@ -28,3 +31,5 @@ class ARC_TYPES(Enum):
 
 
 DEFAULT_ARC = ARC_TYPES.ZIP
+
+pool = ProcessPoolExecutor(multiprocessing.cpu_count() - 1)
