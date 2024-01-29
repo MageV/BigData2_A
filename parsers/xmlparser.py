@@ -43,6 +43,6 @@ def create_record(doc) -> list:
     else:
         inn = doc.contents[0]["ИННФЛ"]
     region_code = doc.contents[1]["КодРегион"]
-    strokved = ':'.join(list(map(lambda x: x["КодОКВЭД"], doc.contents[2].contents)))
+    strokved = ';'.join(list(map(lambda x: x["КодОКВЭД"].split(".")[0], doc.contents[2].contents)))
     rowlist.append([dat_vkl_msp, vid_sub_msp, cat_sub_msp, sschr, ogrn, inn, strokved, region_code])
     return rowlist
