@@ -63,6 +63,7 @@ class WebScraper:
     def get(self):
         asyncio.run(self.__getHtml())
         file = self.__parseHtml()
-        asyncio.run(self.__get_file(name=file, store=f'{ZIP_FOIV}{str(uuid1())}_new.zip'))
-        return True
+        store=f'{ZIP_FOIV}{str(uuid1())}_new.zip'
+        asyncio.run(self.__get_file(name=file, store=store))
+        return store
 

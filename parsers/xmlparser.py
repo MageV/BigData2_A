@@ -1,27 +1,48 @@
-import asyncio
-
-import pandas as pd
 from bs4 import BeautifulSoup
-from lxml import objectify
-from config.appconfig import *
-from apputils.log import write_log, logger
+
+from apputils.log import logger
+from config.contexts import *
+import datetime as dt
 
 
-class XmlReadSingle:
-    def __init__(self):
-        self.__soup=None
+def loadxml(name):
+    result = []
+    xml_file = open(name, 'r').read()
+    try:
+        soup = BeautifulSoup(xml_file, 'xml')
+        counter = file_counter_ctx.get()
+        rowlist = list()
+        docs = soup.find_all("Документ")
+        result = list(map(create_record, docs))
+        logger.info(f"{dt.datetime.now()} counter:{counter}")
+        counter += 1
+        file_counter_ctx.set(counter)
+        # drop_xml()
+    except Exception as ex:
+        logger.error(msg=f'Error:{ex}')
+    finally:
+        return result
 
-    async def loadxml(self, name):
-        xml_file=open(name,'r').read()
-        try:
-         self.__soup=BeautifulSoup(xml_file,'xml')
-         self.__parse_to_record()
-         self.__drop_xml()
-        except Exception as ex:
-            logger.error(message=f'Error:{ex}',severity=SEVERITY.ERROR)
 
-    def __parse_to_record(self):
-        pass
+def drop_xml():
+    pass
 
-    def __drop_xml(self):
-        pass
+
+def create_record(doc) -> list:
+    rowlist = []
+    dat_vkl_msp = doc["ДатаВклМСП"]
+    vid_sub_msp = doc["ВидСубМСП"]
+    cat_sub_msp = doc["КатСубМСП"]
+    sschr = doc["ССЧР"] if "ССЧР" in doc.attrs else 0
+    if "ОГРН" in doc.contents[0].attrs:
+        ogrn = doc.contents[0]["ОГРН"]
+    else:
+        ogrn = doc.contents[0]["ОГРНИП"]
+    if "ИННЮЛ" in doc.contents[0].attrs:
+        inn = doc.contents[0]["ИННЮЛ"]
+    else:
+        inn = doc.contents[0]["ИННФЛ"]
+    region_code = doc.contents[1]["КодРегион"]
+    strokved = ':'.join(list(map(lambda x: x["КодОКВЭД"], doc.contents[2].contents)))
+    rowlist.append([dat_vkl_msp, vid_sub_msp, cat_sub_msp, sschr, ogrn, inn, strokved, region_code])
+    return rowlist
