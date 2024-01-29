@@ -11,7 +11,7 @@ class XmlReadSingle:
     def __init__(self):
         self.__soup=None
 
-    def loadxml(self, name):
+    async def loadxml(self, name):
         xml_file=open(name,'r').read()
         try:
          self.__soup=BeautifulSoup(xml_file,'xml')
