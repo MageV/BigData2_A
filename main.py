@@ -29,9 +29,9 @@ if __name__ == '__main__':
         store = parser.get()
         filelist = glob.glob(XML_STORE + '*.xml')
         processors = multiprocessing.cpu_count() - 1
-        chunksize = len(filelist) // processors
+        chunk_size = len(filelist) // processors
 
-        with ProcessPoolExecutor(max_workers=processors, max_tasks_per_child=chunksize) as pool:
+        with ProcessPoolExecutor(max_workers=processors, max_tasks_per_child=chunk_size) as pool:
             futures = [pool.submit(loadxml, item) for item in filelist]
             for future in as_completed(futures):
                 storage.append(future.result())
@@ -41,8 +41,8 @@ if __name__ == '__main__':
         drop_csv()
         filelist = glob.glob(XML_STORE + '*.xml')
         processors = multiprocessing.cpu_count() - 1
-        chunksize = len(filelist) // processors
-        with ProcessPoolExecutor(max_workers=processors, max_tasks_per_child=chunksize) as pool:
+        chunk_size = len(filelist) // processors
+        with ProcessPoolExecutor(max_workers=processors, max_tasks_per_child=chunk_size) as pool:
             futures = [pool.submit(loadxml, item) for item in filelist]
             for future in as_completed(futures):
                 biglist.append(future.result())
