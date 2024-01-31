@@ -24,6 +24,7 @@ if __name__ == '__main__':
         drop_zip()
         drop_xml()
         drop_csv()
+        drop_biglist()
         observer = ZipFileObserver()
         parser = WebScraper()
         store = parser.get()
@@ -39,6 +40,7 @@ if __name__ == '__main__':
         archive_manager.extract(source=APP_FILE_DEBUG_NAME, dest=XML_STORE)
     elif XML_FILE_DEBUG:
         drop_csv()
+        drop_biglist()
         filelist = glob.glob(XML_STORE + '*.xml')
         processors = multiprocessing.cpu_count() - 1
         chunk_size = len(filelist) // processors
