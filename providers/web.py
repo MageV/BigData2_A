@@ -1,13 +1,14 @@
 import asyncio
-from asyncio import subprocess
+import datetime as dt
 from uuid import uuid1
+
 import aiofiles
 import aiohttp
 import pandas as pd
 from bs4 import BeautifulSoup
+
 from apputils.log import write_log
 from config.appconfig import *
-import datetime as dt
 
 
 class WebScraper:

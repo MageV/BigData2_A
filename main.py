@@ -1,37 +1,57 @@
-import asyncio
-import datetime as dt
-import glob
-import os
-from multiprocessing import Pool, freeze_support
+import multiprocessing
+import uuid
+from concurrent.futures import as_completed, ProcessPoolExecutor
+from multiprocessing import freeze_support
+
+from biglist import Biglist
 
 from apputils.archivers import ArchiveManager
-from apputils.log import write_log
 from apputils.observers import ZipFileObserver
 from apputils.storages import ResultStorage
-from config.appconfig import *
-from parsers.webparser import WebScraper
-from parsers.xmlparser import loadxml
-
-storage = ResultStorage()
+from providers.os_operations import *
+from providers.web import WebScraper
 
 if __name__ == '__main__':
     freeze_support()
     asyncio.run(write_log(message=f'Started at:{dt.datetime.now()}', severity=SEVERITY.INFO))
-    filelist: list = glob.glob(ZIP_FOIV + '*.zip')
     archive_manager = ArchiveManager()
+    storage = ResultStorage()
+    biglist_path = f'{BIGLIST_STORE}{uuid.uuid1().__str__()}/'
+    biglist:Biglist = Biglist.new(path=biglist_path, batch_size=MAX_DUMP_RECORDS)
+    counter = 0
+    total_counter = 0
     if not APP_FILE_DEBUG and not XML_FILE_DEBUG:
-        for _ in filelist:
-            os.remove(_)
+        drop_zip()
+        drop_xml()
+        drop_csv()
         observer = ZipFileObserver()
         parser = WebScraper()
         store = parser.get()
-        asyncio.run(archive_manager.extract(source=store, dest=XML_STORE))
-    elif APP_FILE_DEBUG:
-        asyncio.run(archive_manager.extract(source=APP_FILE_DEBUG_NAME, dest=XML_STORE))
-    elif XML_FILE_DEBUG:
         filelist = glob.glob(XML_STORE + '*.xml')
-        processors=multiprocessing.cpu_count() - 2
-        with Pool(processors)as pool:
-            for result in pool.map(loadxml, filelist, chunksize=processors*2):
-                storage.append(result)
-        asyncio.run(write_log(message=f'finished at:{dt.datetime.now()}', severity=SEVERITY.INFO))
+        processors = multiprocessing.cpu_count() - 1
+        chunksize = len(filelist) // processors
+
+        with ProcessPoolExecutor(max_workers=processors, max_tasks_per_child=chunksize) as pool:
+            futures = [pool.submit(loadxml, item) for item in filelist]
+            for future in as_completed(futures):
+                storage.append(future.result())
+    elif APP_FILE_DEBUG:
+        archive_manager.extract(source=APP_FILE_DEBUG_NAME, dest=XML_STORE)
+    elif XML_FILE_DEBUG:
+        drop_csv()
+        filelist = glob.glob(XML_STORE + '*.xml')
+        processors = multiprocessing.cpu_count() - 1
+        chunksize = len(filelist) // processors
+        with ProcessPoolExecutor(max_workers=processors, max_tasks_per_child=chunksize) as pool:
+            futures = [pool.submit(loadxml, item) for item in filelist]
+            for future in as_completed(futures):
+                biglist.append(future.result())
+                counter += 1
+                if counter >= MAX_DUMP_FILES_COUNT:
+                    asyncio.run(write_log(message=f'dump at:{dt.datetime.now()}', severity=SEVERITY.INFO))
+                    biglist.flush()
+                    total_counter += counter
+                    counter = 0
+                    asyncio.run(write_log(message=f'total parsed:{total_counter}', severity=SEVERITY.INFO))
+        biglist.flush()
+    asyncio.run(write_log(message=f'finished at:{dt.datetime.now()}', severity=SEVERITY.INFO))

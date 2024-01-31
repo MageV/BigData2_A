@@ -1,6 +1,4 @@
 import asyncio
-import os
-from zipfile import ZipFile
 
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer

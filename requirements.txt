@@ -25,3 +25,4 @@ tzlocal==5.2
 urllib3==2.1.0
 yarl==1.9.4
 watchdog~=3.0.0
+SQLAlchemy~=2.0.25
