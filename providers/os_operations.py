@@ -63,3 +63,4 @@ def drop_csv():
 
 def drop_biglist():
     shutil.rmtree(BIGLIST_STORE)
+    os.mkdir(BIGLIST_STORE)
