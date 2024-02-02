@@ -1,10 +1,7 @@
 import asyncio
-import datetime as dt
-import gc
 import glob
 import os
 import shutil
-
 from bs4 import BeautifulSoup
 
 from apputils.log import write_log
@@ -13,18 +10,11 @@ from config.appconfig import *
 
 def loadxml(name):
     xml_file = open(name, 'r').read()
-    result = []
     try:
         soup = BeautifulSoup(xml_file, 'lxml-xml')
-        docs = soup.find_all("Документ")
-        result = list(map(create_record, docs))
-        soup.clear()
-        gc.collect()
-        # asyncio.run(write_log(message=f"{dt.datetime.now()}:{name}", severity=SEVERITY.INFO))
+        return list(map(create_record, soup.find_all("Документ")))
     except Exception as ex:
         asyncio.run(write_log(message=f'Error:{ex}', severity=SEVERITY.ERROR))
-    finally:
-        return result
 
 
 def create_record(doc) -> list:
@@ -62,5 +52,15 @@ def drop_csv():
 
 
 def drop_biglist():
-    shutil.rmtree(BIGLIST_STORE)
-    os.mkdir(BIGLIST_STORE)
+    try:
+        shutil.rmtree(BIGLIST_STORE)
+        os.mkdir(BIGLIST_STORE)
+    except:
+        pass
+
+
+def worker_reader_list(file_reader):
+    rowlist = []
+    for _ in file_reader:
+        rowlist.append(_)
+    return rowlist

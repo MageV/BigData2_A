@@ -1,7 +1,7 @@
 import asyncio
 import datetime as dt
 from uuid import uuid1
-
+from zeep import Client
 import aiofiles
 import aiohttp
 import pandas as pd
@@ -20,7 +20,7 @@ class WebScraper:
         if url == '':
             self.__url = URL
         self.__html = ""
-      #  self.__path = path
+
 
     async def __getHtml(self):
         async  with aiohttp.ClientSession() as session:
@@ -47,10 +47,10 @@ class WebScraper:
         return None
 
     async def __get_file(self, name, store):
-        #chunk_size = 64*1024*1024
-        chunk_size=2*1024*1024
-        await write_log(message=f'Zip download started at: {dt.datetime.now()}',severity=SEVERITY.INFO)
-        timeout=aiohttp.ClientTimeout(total=60*60,sock_read=240)
+        # chunk_size = 64*1024*1024
+        chunk_size = 2 * 1024 * 1024
+        await write_log(message=f'Zip download started at: {dt.datetime.now()}', severity=SEVERITY.INFO)
+        timeout = aiohttp.ClientTimeout(total=60 * 60, sock_read=240)
         async with aiohttp.ClientSession(timeout=timeout).get(name) as response:
             async with aiofiles.open(store, mode="wb") as f:
                 while True:
@@ -59,12 +59,19 @@ class WebScraper:
                     if not chunk:
                         break
                     await f.write(chunk)
-        await write_log(message=f'Zip download completed at: {dt.datetime.now()}',severity=SEVERITY.INFO)
+        await write_log(message=f'Zip download completed at: {dt.datetime.now()}', severity=SEVERITY.INFO)
 
     def get(self):
         asyncio.run(self.__getHtml())
         file = self.__parseHtml()
-        store=f'{ZIP_FOIV}{str(uuid1())}_new.zip'
+        store = f'{ZIP_FOIV}{str(uuid1())}_new.zip'
         asyncio.run(self.__get_file(name=file, store=store))
         return store
 
+
+def receive_data_from_cbr():
+    from datetime import datetime, timedelta
+    client = Client("http://www.cbr.ru/DailyInfoWebServ/DailyInfo.asmx?wsdl", strict=False)
+    with client.options(raw_response=True):
+        result = client.service.OstatDepo((datetime.now() - timedelta(days=2)), datetime.now())
+    print(result.text)
