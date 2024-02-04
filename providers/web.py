@@ -15,12 +15,14 @@ class WebScraper:
 
     def __init__(self, url=''):
         self.__headers = {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.9; rv:45.0) Gecko/20100101 Firefox/45.0'
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.110 Safari/537.36",
+            "Accept-Encoding": "gzip, deflate",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+            "Accept-Language": "en"
         }
         if url == '':
             self.__url = URL
         self.__html = ""
-
 
     async def __getHtml(self):
         async  with aiohttp.ClientSession() as session:
@@ -48,7 +50,7 @@ class WebScraper:
 
     async def __get_file(self, name, store):
         # chunk_size = 64*1024*1024
-        chunk_size = 2 * 1024 * 1024
+        chunk_size = 8192
         await write_log(message=f'Zip download started at: {dt.datetime.now()}', severity=SEVERITY.INFO)
         timeout = aiohttp.ClientTimeout(total=60 * 60, sock_read=240)
         async with aiohttp.ClientSession(timeout=timeout).get(name) as response:
@@ -68,10 +70,9 @@ class WebScraper:
         asyncio.run(self.__get_file(name=file, store=store))
         return store
 
-
-def receive_data_from_cbr():
-    from datetime import datetime, timedelta
-    client = Client("http://www.cbr.ru/DailyInfoWebServ/DailyInfo.asmx?wsdl", strict=False)
-    with client.options(raw_response=True):
-        result = client.service.OstatDepo((datetime.now() - timedelta(days=2)), datetime.now())
-    print(result.text)
+# def receive_data_from_cbr():
+#    from datetime import datetime, timedelta
+#    client = Client("http://www.cbr.ru/DailyInfoWebServ/DailyInfo.asmx?wsdl", strict=False)
+#    with client.options(raw_response=True):
+#        result = client.service.OstatDepo((datetime.now() - timedelta(days=2)), datetime.now())
+#    print(result.text)

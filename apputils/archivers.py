@@ -11,7 +11,7 @@ class ArchiveManager(metaclass=MetaSingleton):
     def __init__(self, archiver=DEFAULT_ARC):
         self.__arc = archiver
 
-    def extract(self, source, dest, is_delete_source=True):
+    def extract(self, source, dest, is_delete_source=False):
         if self.__arc == ARC_TYPES.ZIP:
             with ZipFile(source, 'r') as handle:
                 handle.extractall(dest)
