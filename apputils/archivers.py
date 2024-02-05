@@ -17,4 +17,4 @@ class ArchiveManager(metaclass=MetaSingleton):
                 handle.extractall(dest)
                 if is_delete_source:
                     os.remove(source)
-            asyncio.run(write_log(message=f'file unpacked:{source}', severity=SEVERITY.INFO))
+            asyncio.run(write_log(message=f'finished unpack:{source}', severity=SEVERITY.INFO))

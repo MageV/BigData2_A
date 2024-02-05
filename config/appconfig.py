@@ -1,8 +1,12 @@
 import logging
 from enum import Enum, auto
 
-DATA_HOME_FILES = '/home/master/data'
+from sqlalchemy.orm import declarative_base
 
+conn_str='clickhouse://default@localhost/default'
+
+
+DATA_HOME_FILES = '/home/master/data'
 ZIP_FOIV = f'{DATA_HOME_FILES}/zips/'
 XML_STORE = f'{DATA_HOME_FILES}/unpacked/'
 JSON_STORE_CONFIG = f'{DATA_HOME_FILES}/config/json.config'
@@ -11,7 +15,7 @@ URL = 'https://www.nalog.gov.ru/opendata/7707329152-rsmp/'
 BIGLIST_STORE = f'{DATA_HOME_FILES}/biglists/'
 APP_FILE_DEBUG = True
 XML_FILE_DEBUG = True
-APP_FILE_DEBUG_NAME = ZIP_FOIV + 'data-10012024-structure-10062023.zip'
+APP_FILE_DEBUG_NAME = ZIP_FOIV + 'd6d2fe2c-bf67-11ee-97b7-a20ddd0a7cd3_new.zip'
 LOG_TO = 'CONSOLE'
 LOG_FILE = f'{DATA_HOME_FILES}/logs/applog.log'
 MAX_DUMP_RECORDS = 10000000
@@ -36,3 +40,5 @@ class ARC_TYPES(Enum):
 
 
 DEFAULT_ARC = ARC_TYPES.ZIP
+
+Base=declarative_base()

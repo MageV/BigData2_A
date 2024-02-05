@@ -1,11 +1,12 @@
 import asyncio
 import datetime as dt
+import json
 from uuid import uuid1
-from zeep import Client
+from zeep import Client, wsdl, Settings
 import aiofiles
 import aiohttp
 import pandas as pd
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, SoupStrainer
 
 from apputils.log import write_log
 from config.appconfig import *
@@ -70,9 +71,13 @@ class WebScraper:
         asyncio.run(self.__get_file(name=file, store=store))
         return store
 
-# def receive_data_from_cbr():
-#    from datetime import datetime, timedelta
-#    client = Client("http://www.cbr.ru/DailyInfoWebServ/DailyInfo.asmx?wsdl", strict=False)
-#    with client.options(raw_response=True):
-#        result = client.service.OstatDepo((datetime.now() - timedelta(days=2)), datetime.now())
-#    print(result.text)
+    def get_data_from_cbr(self, mindate=dt.datetime.strptime('01.01.2010', '%d.%m.%Y'), maxdate=dt.datetime.today()):
+        client = Client("http://www.cbr.ru/DailyInfoWebServ/DailyInfo.asmx?wsdl")
+        client.settings=Settings(raw_response=True,strict=False)
+        response_key_rate = client.service.KeyRate(mindate, maxdate)
+        strainer_rate=SoupStrainer("KR")
+        soup_key_rate=BeautifulSoup(response_key_rate.content,'lxml-xml',parse_only=strainer_rate)
+
+        response_val_spr = client.service.EnumValutes(True)
+        soup_val_spr=BeautifulSoup(response_val_spr.content,'lxml-xml')
+
