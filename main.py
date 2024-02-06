@@ -15,9 +15,11 @@ if __name__ == '__main__':
     archive_manager = ArchiveManager()
     db_provider = ClickHouseProvider()
     parser = WebScraper()
-    parser.get_data_from_cbr()
+    asyncio.run(write_log(message=f'Load data from CBR:{dt.datetime.now()}', severity=SEVERITY.INFO))
+    kv_dframe=parser.get_data_from_cbr()
+    asyncio.run(write_log(message=f'Finished:{dt.datetime.now()}', severity=SEVERITY.INFO))
     df = pd.DataFrame(columns=['date_', 'workers', 'okved', 'region', 'typeface', 'workers_sum'])
-    processors = multiprocessing.cpu_count() - 1
+    processors = multiprocessing.cpu_count() - 2
     counter = 0
     total_counter = 0
     if not APP_FILE_DEBUG and not XML_FILE_DEBUG:
@@ -55,6 +57,8 @@ if __name__ == '__main__':
                 df = pd.concat([df, result], axis=0, ignore_index=True)
                 del result
                 gc.collect()
+            df.reset_index(inplace=True)
+            df.set_index('date_').join([kv_dframe], how='inner').reset_index()
     asyncio.run(write_log(message=f'finished at:{dt.datetime.now()}', severity=SEVERITY.INFO))
 """
             filecount = 0
