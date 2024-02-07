@@ -1,13 +1,20 @@
+import asyncio
 import datetime as dt
+import gc
+import glob
 import multiprocessing
 from concurrent.futures import as_completed, ProcessPoolExecutor
 from multiprocessing import freeze_support
 
+import pandas as pd
+
 from apputils.archivers import ArchiveManager
+from apputils.log import write_log
 from apputils.observers import ZipFileObserver
+from apputils.utils import loadxml, drop_zip, drop_xml, drop_csv, joiner
 from providers.db import ClickHouseProvider
-from providers.os_operations import *
 from providers.web import WebScraper
+from config.appconfig import *
 
 if __name__ == '__main__':
     freeze_support()
@@ -16,7 +23,7 @@ if __name__ == '__main__':
     db_provider = ClickHouseProvider()
     parser = WebScraper()
     asyncio.run(write_log(message=f'Load data from CBR:{dt.datetime.now()}', severity=SEVERITY.INFO))
-    kv_dframe=parser.get_data_from_cbr()
+    kv_dframe = parser.get_data_from_cbr()
     asyncio.run(write_log(message=f'Finished:{dt.datetime.now()}', severity=SEVERITY.INFO))
     df = pd.DataFrame(columns=['date_', 'workers', 'okved', 'region', 'typeface', 'workers_sum'])
     processors = multiprocessing.cpu_count() - 2
@@ -58,7 +65,7 @@ if __name__ == '__main__':
                 del result
                 gc.collect()
             df.reset_index(inplace=True)
-            df.set_index('date_').join([kv_dframe], how='inner').reset_index()
+            df = joiner(df, kv_dframe)
     asyncio.run(write_log(message=f'finished at:{dt.datetime.now()}', severity=SEVERITY.INFO))
 """
             filecount = 0

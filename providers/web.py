@@ -2,7 +2,7 @@ import asyncio
 import datetime as dt
 import json
 from uuid import uuid1
-from zeep import Client, wsdl, Settings
+from zeep import Client, Settings
 import aiofiles
 import aiohttp
 import pandas as pd
