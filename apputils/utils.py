@@ -2,6 +2,8 @@ import asyncio
 import datetime as dt
 import glob
 import os
+from asyncio import as_completed
+from concurrent.futures import ProcessPoolExecutor
 
 import pandas as pd
 import pandasql as ps
@@ -11,7 +13,7 @@ from apputils.log import write_log
 from config.appconfig import SEVERITY, ZIP_FOIV, XML_STORE, RESULT_STORE
 
 
-def list_inner_join(a:list,b:list):
+def list_inner_join(a: list, b: list):
     d = {}
     for row in b:
         d[row[0]] = row
@@ -25,6 +27,7 @@ def loadxml(name):
     with open(name, 'r') as f:
         xml = f.read()
         try:
+            #asyncio.run(write_log(message=f'file{name} at:{dt.datetime.now()}', severity=SEVERITY.INFO))
             soup = BeautifulSoup(xml, 'lxml-xml')
             return reducer(list(map(create_record, soup.find_all("Документ"))))
         except Exception as ex:
@@ -69,20 +72,32 @@ def drop_csv():
 
 
 def reducer(rowset: list):
-    df = pd.DataFrame(data=rowset, columns=['date_', 'workers', 'okved', 'region', 'typeface'])
-    query = "select *,sum(workers) as workers_sum from df group by date_,okved,region,typeface"
+    df = pd.DataFrame(data=rowset, columns=['date_reg', 'workers', 'okved', 'region', 'typeface'])
+    query = ("select date_reg,sum(workers) as workers,okved,region,typeface from df group by date_reg,okved,region,"
+             "typeface")
     try:
         resultset = ps.sqldf(query, locals())
+        resultset['date_reg']=pd.to_datetime(resultset['date_reg'])
         del df
         return resultset
     except Exception as ex:
         asyncio.run(write_log(message=f'Error:{ex}', severity=SEVERITY.ERROR))
 
-def joiner(frame1:pd.DataFrame,frame2:pd.DataFrame):
-    query=("select t1.*,t2.key_rate,t2.val_usd,t2.val_eur from frame1 t1 inner join t2"
-           "on t1.date_=t2.date_ order by t1.date_")
-    try:
-        resultset=ps.sqldf(query,locals())
-        return resultset
-    except Exception as ex:
-        asyncio.run(write_log(message=f'Error:{ex}', severity=SEVERITY.ERROR))
+
+
+def debug_csv(df: pd.DataFrame):
+    df.to_csv(f'{RESULT_STORE}debug.csv')
+
+
+def string_to_list(i):
+    while True:
+        n = next(i)
+        if n == '{':
+            yield [x for x in string_to_list(i)]
+        elif n == '}':
+            return
+        else:
+            yield n
+
+
+

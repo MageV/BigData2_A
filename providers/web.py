@@ -1,6 +1,5 @@
 import asyncio
 import datetime as dt
-import json
 from uuid import uuid1
 from zeep import Client, Settings
 import aiofiles
@@ -105,5 +104,5 @@ class WebScraper:
             df=pd.concat([df,frame],ignore_index=True,axis=1)
         df.drop(df.columns[[3,4]],axis=1,inplace=True)
         df.columns=["date_","key_rate","val_usd","val_eur"]
-        df.reset_index(inplace=True)
+        #df.reset_index(inplace=True)
         return df
