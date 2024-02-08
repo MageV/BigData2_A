@@ -10,11 +10,16 @@ ZIP_FOIV = f'{DATA_HOME_FILES}/zips/'
 XML_STORE = f'{DATA_HOME_FILES}/unpacked/'
 GLOSSARY_STORE = f'{DATA_HOME_FILES}/config/json.config'
 RESULT_STORE = f'{DATA_HOME_FILES}/results/'
-URL = 'https://www.nalog.gov.ru/opendata/7707329152-rsmp/'
-BIGLIST_STORE = f'{DATA_HOME_FILES}/biglists/'
+URL_FOIV = 'https://www.nalog.gov.ru/opendata/7707329152-rsmp/'
+URL_CBR="http://www.cbr.ru/DailyInfoWebServ/DailyInfo.asmx?wsdl"
+
+# LOG CONSTANTS
 LOG_TO = 'CONSOLE'
 LOG_FILE = f'{DATA_HOME_FILES}/logs/applog.log'
 # MAX_DUMP_RECORDS = 10000000
+# BIGLIST_STORE = f'{DATA_HOME_FILES}/biglists/'
+
+# ANALYTIC PARAMETERS
 KEY_VALUTES = ['840USD', '978EUR']
 
 # DEBUG CONSTANTS

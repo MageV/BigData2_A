@@ -22,7 +22,7 @@ class WebScraper:
             "Accept-Language": "en"
         }
         if url == '':
-            self.__url = URL
+            self.__url = URL_FOIV
         self.__html = ""
 
     async def __getHtml(self):
@@ -72,7 +72,7 @@ class WebScraper:
         return store
 
     def get_data_from_cbr(self, mindate=dt.datetime.strptime('01.01.2010', '%d.%m.%Y'), maxdate=dt.datetime.today()):
-        client = Client("http://www.cbr.ru/DailyInfoWebServ/DailyInfo.asmx?wsdl")
+        client = Client(URL_CBR)
         client.settings = Settings(raw_response=True, strict=False)
         response_key_rate = client.service.KeyRate(mindate, maxdate)
         strainer_rate = SoupStrainer("KR")
