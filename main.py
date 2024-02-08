@@ -7,12 +7,12 @@ from concurrent.futures import as_completed, ProcessPoolExecutor
 from multiprocessing import freeze_support
 
 import pandas as pd
-from joblib import Parallel
+
 
 from apputils.archivers import ArchiveManager
 from apputils.log import write_log
 from apputils.observers import ZipFileObserver
-from apputils.utils import loadxml, drop_zip, drop_xml, drop_csv, debug_csv
+from apputils.utils import loadxml, drop_zip, drop_xml, drop_csv
 from providers.db import *
 from providers.web import WebScraper
 
@@ -84,7 +84,7 @@ if __name__ == '__main__':
         store = parser.get()
         archive_manager.extract(source=APP_FILE_DEBUG_NAME, dest=XML_STORE)
         prepare_tables('app')
-        df = preprocess_xml(file_list=filelist, processors_count=processors, debug=False)
+        df = preprocess_xml(file_list=filelist, processors_count=processors)
     elif XML_FILE_DEBUG:
         #      archive_manager.extract(source=APP_FILE_DEBUG_NAME, dest=XML_STORE)
         files_csv = glob.glob(RESULT_STORE + '*.csv')
