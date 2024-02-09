@@ -26,7 +26,7 @@ KEY_VALUTES = ['840USD', '978EUR']
 APP_FILE_DEBUG = True
 XML_FILE_DEBUG = True
 APP_FILE_DEBUG_NAME = ZIP_FOIV + 'd6d2fe2c-bf67-11ee-97b7-a20ddd0a7cd3_new.zip'
-MERGE_DEBUG = False
+MERGE_DEBUG = True
 
 
 class SEVERITY(Enum):

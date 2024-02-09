@@ -8,11 +8,11 @@ from multiprocessing import freeze_support
 
 import pandas as pd
 
-
 from apputils.archivers import ArchiveManager
 from apputils.log import write_log
 from apputils.observers import ZipFileObserver
 from apputils.utils import loadxml, drop_zip, drop_xml, drop_csv
+from ml.ai_model import prepare_ml_data
 from providers.db import *
 from providers.web import WebScraper
 
@@ -25,11 +25,14 @@ def app_init():
     return a_manager, webparser, prc, frame
 
 
-def preprocess_xml(file_list, processors_count):
+def preprocess_xml(file_list, processors_count, debug=False):
+    if debug:
+        result = click_client.query(query="select min(date_reg),max(date_reg) from app_row")
+        return result.result_rows
     big_frame = pd.DataFrame(columns=['date_reg', 'workers', 'okved', 'region', 'typeface'])
     asyncio.run(write_log(message=f'Parse started at:{dt.datetime.now()}', severity=SEVERITY.INFO))
     with (ProcessPoolExecutor(max_workers=processors_count,
-                              max_tasks_per_child=len(file_list) // processors_count+20) as pool):
+                              max_tasks_per_child=len(file_list) // processors_count + 20) as pool):
         futures = [pool.submit(loadxml, item) for item in file_list]
         row_counter = 0
         for future in as_completed(futures):
@@ -57,22 +60,41 @@ def preprocess_xml(file_list, processors_count):
         except Exception as ex:
             asyncio.run(write_log(message=f'Error:{ex}', severity=SEVERITY.ERROR))
         big_frame.drop()
+        result = click_client.query(query="select min(date_reg),max(date_reg) from app_row")
+        return result
 
 
-
-if __name__ == '__main__':
-    freeze_support()
-    asyncio.run(write_log(message=f'Started at:{dt.datetime.now()}', severity=SEVERITY.INFO))
-    archive_manager, parser, processors, df = app_init()
+def fill_glossary(mindate=dt.datetime.strptime('01.01.2010', '%d.%m.%Y'), maxdate=dt.datetime.today()):
     asyncio.run(write_log(message=f'Load data from CBR:{dt.datetime.now()}', severity=SEVERITY.INFO))
-    kv_dframe = parser.get_data_from_cbr()
+    kv_dframe = parser.get_data_from_cbr(mindate=mindate, maxdate=maxdate)
     prepare_tables('cbr')
     asyncio.run(
         write_log(message=f'Glossary:Write data to ClickHouse started:{dt.datetime.now()}', severity=SEVERITY.INFO))
     click_client.insert_df(table='app_cbr', df=kv_dframe, column_names=['date_', 'keyrate', 'usd', 'eur'],
                            column_type_names=['Date', 'Float32', 'Float32', 'Float32'])
     asyncio.run(write_log(message=f'Glossary:Finished:{dt.datetime.now()}', severity=SEVERITY.INFO))
-    del kv_dframe
+    return kv_dframe
+
+
+def update_rows_kv(kvframe: pd.DataFrame):
+    for item in kvframe.itertuples():
+        date_reg = item[1]
+        key_r = item[2]
+        usd = item[3]
+        eur = item[4]
+        parameters = {'key_r': key_r,
+                      'usd': usd,
+                      'eur': eur,
+                      'date_reg': date_reg}
+        query = ("alter table app_row update ratekey={key_r:Float32},usd=={usd:Float32},eur={eur:Float32} where "
+                 "date_reg={date_reg:DateTime}")
+        click_client.command(query, parameters=parameters)
+
+
+if __name__ == '__main__':
+    freeze_support()
+    asyncio.run(write_log(message=f'Started at:{dt.datetime.now()}', severity=SEVERITY.INFO))
+    archive_manager, parser, processors, df = app_init()
     filelist = glob.glob(XML_STORE + '*.xml')
     counter = 0
     total_counter = 0
@@ -85,14 +107,21 @@ if __name__ == '__main__':
         archive_manager.extract(source=APP_FILE_DEBUG_NAME, dest=XML_STORE)
         prepare_tables('app')
         df = preprocess_xml(file_list=filelist, processors_count=processors)
+        kvframe = fill_glossary(df[0][0], df[0][1])
+        update_rows_kv(kvframe)
     elif XML_FILE_DEBUG:
         #      archive_manager.extract(source=APP_FILE_DEBUG_NAME, dest=XML_STORE)
         files_csv = glob.glob(RESULT_STORE + '*.csv')
         # drop_csv()
-        if MERGE_DEBUG:
+        if not MERGE_DEBUG:
             prepare_tables('app')
             df = preprocess_xml(file_list=filelist, processors_count=processors)
         else:
+            df = preprocess_xml(file_list=filelist, processors_count=processors, debug=True)
+            kvframe = fill_glossary(df[0][0], df[0][1])
+            asyncio.run(write_log(message=f'Update app_row:Started:{dt.datetime.now()}', severity=SEVERITY.INFO))
+            update_rows_kv(kvframe)
+            asyncio.run(write_log(message=f'Update app_row:finished:{dt.datetime.now()}', severity=SEVERITY.INFO))
             gc.collect()
-            val_df = prepare_ml_data()
+            prepare_ml_data()
     asyncio.run(write_log(message=f'finished at:{dt.datetime.now()}', severity=SEVERITY.INFO))

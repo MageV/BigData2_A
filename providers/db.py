@@ -8,5 +8,3 @@ def prepare_tables(table):
         click_client.command("alter table app_row delete where 1=1")
 
 
-def prepare_ml_data():
-    pass
