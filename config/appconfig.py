@@ -11,7 +11,8 @@ XML_STORE = f'{DATA_HOME_FILES}/unpacked/'
 GLOSSARY_STORE = f'{DATA_HOME_FILES}/config/json.config'
 RESULT_STORE = f'{DATA_HOME_FILES}/results/'
 URL_FOIV = 'https://www.nalog.gov.ru/opendata/7707329152-rsmp/'
-URL_CBR="http://www.cbr.ru/DailyInfoWebServ/DailyInfo.asmx?wsdl"
+URL_CBR = "http://www.cbr.ru/DailyInfoWebServ/DailyInfo.asmx?wsdl"
+MODEL_STORE = f'{DATA_HOME_FILES}/model/'
 
 # LOG CONSTANTS
 LOG_TO = 'CONSOLE'
@@ -45,6 +46,13 @@ class ARC_TYPES(Enum):
     ZIP = auto()
     GZIP = auto()
     UNKWN = auto()
+
+
+class AI_FACTOR(Enum):
+    AIF_KR = auto()
+    AIF_USD = auto()
+    AIF_EUR = auto()
+    AIF_NONE = auto()
 
 
 DEFAULT_ARC = ARC_TYPES.ZIP

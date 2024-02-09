@@ -5,14 +5,14 @@ import multiprocessing
 import datetime as dt
 from concurrent.futures import as_completed, ProcessPoolExecutor
 from multiprocessing import freeze_support
-
 import pandas as pd
+
 
 from apputils.archivers import ArchiveManager
 from apputils.log import write_log
 from apputils.observers import ZipFileObserver
 from apputils.utils import loadxml, drop_zip, drop_xml, drop_csv
-from ml.ai_model import prepare_ml_data
+from ml.ai_model import ai_learn
 from providers.db import *
 from providers.web import WebScraper
 
@@ -123,5 +123,5 @@ if __name__ == '__main__':
             update_rows_kv(kvframe)
             asyncio.run(write_log(message=f'Update app_row:finished:{dt.datetime.now()}', severity=SEVERITY.INFO))
             gc.collect()
-            prepare_ml_data()
+            ai_learn(AI_FACTOR.AIF_KR)
     asyncio.run(write_log(message=f'finished at:{dt.datetime.now()}', severity=SEVERITY.INFO))
