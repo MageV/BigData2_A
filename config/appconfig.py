@@ -54,6 +54,10 @@ class AI_FACTOR(Enum):
     AIF_EUR = auto()
     AIF_NONE = auto()
 
+class AI_SCALER(Enum):
+    AI_NONE=auto()
+    AI_STD=auto()
+
 
 DEFAULT_ARC = ARC_TYPES.ZIP
 click_client = clickhouse_connect.get_client(host='localhost', database='app_storage', compress=False,
