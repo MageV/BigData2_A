@@ -57,6 +57,18 @@ class AI_FACTOR(Enum):
 class AI_SCALER(Enum):
     AI_NONE=auto()
     AI_STD=auto()
+    AI_STD_TRF=auto()
+
+class AI_MODELS(Enum):
+    AI_REGRESSORS=auto()
+    AI_BEYES=auto()
+    AI_ML=auto()
+    AI_ALL=auto()
+    AI_TREES=()
+
+class MSP_CLASS(Enum):
+    MSP_FL=0
+    MSP_UL=1
 
 
 DEFAULT_ARC = ARC_TYPES.ZIP

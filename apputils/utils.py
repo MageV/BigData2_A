@@ -36,7 +36,7 @@ def loadxml(name):
 
 def create_record(doc) -> list:
     dat_vkl_msp = dt.datetime.strptime(doc["ДатаВклМСП"], '%d.%m.%Y')
-    dat_vkl_msp = dat_vkl_msp.replace(day=1)
+    #dat_vkl_msp = dat_vkl_msp.replace(day=1)
     sschr = int(doc["ССЧР"]) if "ССЧР" in doc.attrs else 1
     #    if "ОГРН" in doc.contents[0].attrs:
     #        ogrn = doc.contents[0]["ОГРН"]
