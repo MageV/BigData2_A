@@ -8,8 +8,8 @@ _WebScaper().get()_ - функция получения данных из ФНС
 _WebScaper().get_data_from_cbr(mindate,maxdate)_ - функция получения данных с сайта Банка России<br>
 Запрашиваются данные по ключевой ставке, курсу доллара и евро. Результат DataFrame
 
-## DB_DF ##
-### Модуль для работы с БД и DataFrame ###
+## DB_CLICKHOUSE ##
+### Модуль для работы с БД(ClickHouse) ##
 _db_prepare_tables(table)_ - очистка таблиц ClickHouse перед загрузкой данных<br>
 
 _db_get_frames_by_facetype(ft, mean_over)_ получение DataFrame ClickHouse в различных разрезах<br>
@@ -22,4 +22,5 @@ _db_recode_workers(df) - Служебная функция.<br>
 __(less-or-equal) - 0__ <br>
 __(greater) - 1__ <br>
 
+## DF ##
 _df_clean_for_ai(df: pd.DataFrame)_ - основная функция очистки данных

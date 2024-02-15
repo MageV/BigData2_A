@@ -2,6 +2,7 @@ import logging
 from enum import Enum, auto
 
 import clickhouse_connect
+from pyhive import hive
 
 # conn_str = 'clickhouse+asynch://default:z111111@localhost/app_storage'
 
@@ -30,6 +31,11 @@ APP_FILE_DEBUG_NAME = ZIP_FOIV + 'd6d2fe2c-bf67-11ee-97b7-a20ddd0a7cd3_new.zip'
 MERGE_DEBUG = True
 
 
+class DBENGINE(Enum):
+    CLICKHOUSE = auto()
+    HADOOP = auto()
+
+
 class SEVERITY(Enum):
     INFO = logging.INFO
     ERROR = logging.ERROR
@@ -54,23 +60,27 @@ class AI_FACTOR(Enum):
     AIF_EUR = auto()
     AIF_NONE = auto()
 
+
 class AI_SCALER(Enum):
-    AI_NONE=auto()
-    AI_STD=auto()
-    AI_STD_TRF=auto()
+    AI_NONE = auto()
+    AI_STD = auto()
+    AI_STD_TRF = auto()
+
 
 class AI_MODELS(Enum):
-    AI_REGRESSORS=auto()
-    AI_BEYES=auto()
-    AI_ML=auto()
-    AI_ALL=auto()
-    AI_TREES=()
+    AI_REGRESSORS = auto()
+    AI_BEYES = auto()
+    AI_ML = auto()
+    AI_ALL = auto()
+    AI_TREES = ()
+
 
 class MSP_CLASS(Enum):
-    MSP_FL=0
-    MSP_UL=1
+    MSP_FL = 0
+    MSP_UL = 1
 
 
 DEFAULT_ARC = ARC_TYPES.ZIP
-click_client = clickhouse_connect.get_client(host='localhost', database='app_storage', compress=False,
-                                             username='default', password='z111111')
+
+
+

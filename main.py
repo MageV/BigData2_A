@@ -1,19 +1,17 @@
-import asyncio
 import gc
 import glob
 import multiprocessing
-import datetime as dt
 from concurrent.futures import as_completed, ProcessPoolExecutor
 from multiprocessing import freeze_support
-import pandas as pd
 import warnings
 
 from apputils.archivers import ArchiveManager
-from apputils.log import write_log
 from apputils.observers import ZipFileObserver
 from apputils.utils import loadxml, drop_zip, drop_xml, drop_csv
 from ml.ai_model import ai_learn
-from providers.db_df import *
+from providers.db_clickhouse import *
+from providers.db_clickhouse import fill_glossary
+from providers.df import *
 from providers.web import WebScraper
 
 warnings.filterwarnings("ignore")
@@ -29,7 +27,7 @@ def app_init():
 
 def preprocess_xml(file_list, processors_count, debug=False):
     if debug:
-        result = click_client.query(query="select min(date_reg),max(date_reg) from app_row")
+        result = get_minmax()
         return result.result_rows
     big_frame = pd.DataFrame(columns=['date_reg', 'workers', 'okved', 'region', 'typeface'])
     asyncio.run(write_log(message=f'Parse started at:{dt.datetime.now()}', severity=SEVERITY.INFO))
@@ -51,45 +49,19 @@ def preprocess_xml(file_list, processors_count, debug=False):
             settings = {'async_insert': 1}
             asyncio.run(write_log(message=f'Trying to store data:{dt.datetime.now()}',
                                   severity=SEVERITY.INFO))
-            click_client.insert_df(table='app_row', df=big_frame, column_names=['date_reg', 'workers', 'okved',
-                                                                                'region', 'typeface', 'ratekey',
-                                                                                'usd',
-                                                                                'eur'],
-                                   column_type_names=['Date', 'Int32', 'String', 'Int32', 'Int32', 'Float32',
-                                                      'Float32', 'Float32'], settings=settings)
+#            click_client.insert_df(table='app_row', df=big_frame, column_names=['date_reg', 'workers', 'okved',
+#                                                                                'region', 'typeface', 'ratekey',
+#                                                                                'usd',
+#                                                                               'eur'],
+#                                   column_type_names=['Date', 'Int32', 'String', 'Int32', 'Int32', 'Float32',
+#                                                      'Float32', 'Float32'], settings=settings)
+            insert_data(big_frame)
             asyncio.run(write_log(message=f'Success to store data:{dt.datetime.now()}',
                                   severity=SEVERITY.INFO))
         except Exception as ex:
             asyncio.run(write_log(message=f'Error:{ex}', severity=SEVERITY.ERROR))
-        result = click_client.query(query="select min(date_reg),max(date_reg) from app_row")
+        result = get_minmax()
         return result
-
-
-def fill_glossary(mindate=dt.datetime.strptime('01.01.2010', '%d.%m.%Y'), maxdate=dt.datetime.today()):
-    asyncio.run(write_log(message=f'Load data from CBR:{dt.datetime.now()}', severity=SEVERITY.INFO))
-    kv_dframe = parser.get_data_from_cbr(mindate=mindate, maxdate=maxdate)
-    db_prepare_tables('cbr')
-    asyncio.run(
-        write_log(message=f'Glossary:Write data to ClickHouse started:{dt.datetime.now()}', severity=SEVERITY.INFO))
-    click_client.insert_df(table='app_cbr', df=kv_dframe, column_names=['date_', 'keyrate'],  # , 'usd', 'eur'],
-                           column_type_names=['Date', 'Float32'])  # , 'Float32', 'Float32'])
-    asyncio.run(write_log(message=f'Glossary:Finished:{dt.datetime.now()}', severity=SEVERITY.INFO))
-    return kv_dframe
-
-
-def update_rows_kv(kvframe: pd.DataFrame):
-    for item in kvframe.itertuples():
-        date_reg = item[1]
-        key_r = item[2]
-      #  usd = item[3]
-      #  eur = item[4]
-        parameters = {'key_r': key_r,
-                      #         'usd': usd,
-                      #         'eur': eur,
-                      'date_reg': date_reg}
-        query = ("alter table app_row update ratekey={key_r:Float32} where "
-                 "date_reg={date_reg:DateTime}")  # ,usd=={usd:Float32},eur={eur:Float32}
-        click_client.command(query, parameters=parameters)
 
 
 if __name__ == '__main__':

@@ -12,3 +12,12 @@ Cайт ФНС в виде zip архива размером 2 gb( внутри 
 
 ## Выходные данные ##
 Файл ML - модели.
+
+# Результаты построения моделей #
+__Model:'RandomForestClassifier'__<br>
+*R1: 0.6731148128246462<br>*
+__Model:'DecisionTreeClassifier'__<br>
+*R1: 0.6731148128246462<br>*
+__Model:'ExtraTreesClassifier'__<br>
+*R1: 0.6731148128246462*
+

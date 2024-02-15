@@ -17,7 +17,8 @@ from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
 from apputils.log import write_log
 from config.appconfig import *
 from ml.ai_hyper import *
-from providers.db_df import db_get_frames_by_facetype, df_clean_for_ai
+from providers.df import df_clean_for_ai
+from providers.db_clickhouse import db_get_frames_by_facetype
 
 
 def ai_clean(mean_over, msp_type: MSP_CLASS, no_compare=True):
