@@ -6,7 +6,7 @@ import datetime as dt
 
 from apputils.log import write_log
 from config.appconfig import  AI_FACTOR, SEVERITY
-from providers.web import get_data_from_cbr
+from providers.web import get_rates_cbr
 
 client = clickhouse_connect.get_client(host='localhost', database='app_storage', compress=False,
                                        username='default', password='z111111')
@@ -67,7 +67,7 @@ def update_rows_kv(kvframe: pd.DataFrame):
 
 def fill_glossary(mindate=dt.datetime.strptime('01.01.2010', '%d.%m.%Y'), maxdate=dt.datetime.today()):
     asyncio.run(write_log(message=f'Load data from CBR:{dt.datetime.now()}', severity=SEVERITY.INFO))
-    kv_dframe = get_data_from_cbr(mindate=mindate, maxdate=maxdate)
+    kv_dframe = get_rates_cbr(mindate=mindate, maxdate=maxdate)
     db_prepare_tables('cbr')
     asyncio.run(
         write_log(message=f'Glossary:Write data to ClickHouse started:{dt.datetime.now()}', severity=SEVERITY.INFO))

@@ -72,7 +72,7 @@ class WebScraper:
         return store
 
 
-def get_data_from_cbr(mindate=dt.datetime.strptime('01.01.2010', '%d.%m.%Y'), maxdate=dt.datetime.today()):
+def get_rates_cbr(mindate=dt.datetime.strptime('01.01.2010', '%d.%m.%Y'), maxdate=dt.datetime.today()):
     client = Client(URL_CBR)
     client.settings = Settings(raw_response=True, strict=False)
     response_key_rate = client.service.KeyRate(mindate, maxdate)
@@ -107,3 +107,6 @@ def get_data_from_cbr(mindate=dt.datetime.strptime('01.01.2010', '%d.%m.%Y'), ma
     df.columns = ["date_", "key_rate"]  # ,"val_usd","val_eur"]
     # df.reset_index(inplace=True)
     return df
+
+def get_F102_symbols_cbr(mindate=dt.datetime.strptime('01.01.2010', '%d.%m.%Y'), maxdate=dt.datetime.today()):
+    pass
