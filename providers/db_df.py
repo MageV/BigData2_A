@@ -29,7 +29,7 @@ def db_get_frames_by_facetype(ft, mean_over) -> pd.DataFrame:
     return raw_data
 
 
-def db_ret_okato(df):
+def db_ret_okato():
     okato_sql = "select * from regions order by region"
     okato_data = click_client.query_df(okato_sql)
     return okato_data
