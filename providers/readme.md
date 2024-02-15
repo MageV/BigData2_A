@@ -27,3 +27,4 @@ _df_clean_for_ai(df: pd.DataFrame)_ - основная функция очист
 
 ## DB_HIVE ##
 ### Модуль для работы с БД(Hive) ##
+Функционал аналогичен модулю __DB_CLICKHOUSE__
