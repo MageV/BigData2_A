@@ -24,3 +24,6 @@ __(greater) - 1__ <br>
 
 ## DF ##
 _df_clean_for_ai(df: pd.DataFrame)_ - основная функция очистки данных
+
+## DB_HIVE ##
+### Модуль для работы с БД(Hive) ##

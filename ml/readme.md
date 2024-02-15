@@ -2,7 +2,7 @@
 
 # AI_HYPER #
 
-Файл параметров для построения моделей
+Файл гиперпараметров моделей
 
 # AI_MODEL #
 *ai_learn(mean_over, features=None, scaler=AI_SCALER.AI_NONE,<br> 
