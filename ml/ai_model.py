@@ -4,25 +4,20 @@ import gc
 import multiprocessing
 
 import joblib
-import pandas as pd
 from joblib import parallel_backend
 from sklearn import metrics
-from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor, HistGradientBoostingRegressor, \
-    RandomForestClassifier, ExtraTreesClassifier
-from sklearn.linear_model import Lasso, Ridge, ElasticNet, LogisticRegression
-from sklearn.metrics import mean_absolute_percentage_error
-from sklearn.experimental import enable_halving_search_cv
-from sklearn.model_selection import train_test_split, RepeatedKFold, HalvingGridSearchCV
-from sklearn.naive_bayes import GaussianNB, BernoulliNB, MultinomialNB
+from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor, RandomForestClassifier, ExtraTreesClassifier
+from sklearn.linear_model import Lasso, Ridge, LogisticRegression
+from sklearn.model_selection import train_test_split, HalvingGridSearchCV
+from sklearn.naive_bayes import GaussianNB, BernoulliNB
 from sklearn.preprocessing import StandardScaler
-from sklearn.svm import SVC, SVR, NuSVR, LinearSVR, NuSVC, LinearSVC
+from sklearn.svm import SVR, NuSVR, LinearSVR
 from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
-from xgboost import XGBRegressor
 
 from apputils.log import write_log
 from config.appconfig import *
 from ml.ai_hyper import *
-from providers.db_df import db_get_frames_by_facetype, df_recode_workers, df_clean_for_ai
+from providers.db_df import db_get_frames_by_facetype, df_clean_for_ai
 
 
 def ai_clean(mean_over, msp_type: MSP_CLASS, no_compare=True):
@@ -51,8 +46,6 @@ def ai_learn(mean_over, features=None, scaler=AI_SCALER.AI_NONE, models_class=AI
     pre_work_data = raw_data[criteria_list]
     df_X = pre_work_data.drop(['workers_ai'], axis=1)
     df_Y = pre_work_data['workers_ai'].values
-    # df_X=pre_work_data.drop(['workers'],axis=1)
-    # df_Y=pre_work_data['workers'].values
     gc.collect()
     # Расчет моделей и выбор наилучшей
     with parallel_backend("multiprocessing", n_jobs=multiprocessing.cpu_count() - 2):
