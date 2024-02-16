@@ -30,7 +30,7 @@ class WebScraper:
             response = await session.get(self.__url, headers=self.__headers)
             self.__html = await response.text()
 
-    def __parseHtml(self):
+    def __parseHtml_FNS(self):
         soup = BeautifulSoup(self.__html, features="lxml")
         files = []
         tables_html = soup.find('table').find_all('a')
@@ -49,7 +49,7 @@ class WebScraper:
             print(ex)
         return None
 
-    async def __get_file(self, name, store):
+    async def __get_file_FNS(self, name, store):
         # chunk_size = 64*1024*1024
         chunk_size = 8192
         await write_log(message=f'Zip download started at: {dt.datetime.now()}', severity=SEVERITY.INFO)
@@ -64,11 +64,11 @@ class WebScraper:
                     await f.write(chunk)
         await write_log(message=f'Zip download completed at: {dt.datetime.now()}', severity=SEVERITY.INFO)
 
-    def get(self):
+    def get_FNS(self):
         asyncio.run(self.__getHtml())
-        file = self.__parseHtml()
+        file = self.__parseHtml_FNS()
         store = f'{ZIP_FOIV}{str(uuid1())}_new.zip'
-        asyncio.run(self.__get_file(name=file, store=store))
+        asyncio.run(self.__get_file_FNS(name=file, store=store))
         return store
 
 

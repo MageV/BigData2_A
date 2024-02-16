@@ -77,7 +77,7 @@ if __name__ == '__main__':
         drop_xml()
         drop_csv()
         observer = ZipFileObserver()
-        store = parser.get()
+        store = parser.get_FNS()
         archive_manager.extract(source=APP_FILE_DEBUG_NAME, dest=XML_STORE)
         db_prepare_tables('app')
         df = preprocess_xml(file_list=filelist, processors_count=processors)
