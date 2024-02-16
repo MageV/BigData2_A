@@ -67,7 +67,6 @@ def preprocess_xml(file_list, processors_count, debug=False):
 
 if __name__ == '__main__':
     freeze_support()
-    #get_F102_symbols_cbr()
     asyncio.run(write_log(message=f'Started at:{dt.datetime.now()}', severity=SEVERITY.INFO))
     archive_manager, parser, processors, df = app_init()
     filelist = glob.glob(XML_STORE + '*.xml')
