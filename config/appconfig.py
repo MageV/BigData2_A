@@ -14,6 +14,7 @@ RESULT_STORE = f'{DATA_HOME_FILES}/results/'
 URL_FOIV = 'https://www.nalog.gov.ru/opendata/7707329152-rsmp/'
 URL_CBR_RATES = "http://www.cbr.ru/DailyInfoWebServ/DailyInfo.asmx?wsdl"
 URL_CBR_APP_SERVICE= "http://www.cbr.ru/CreditInfoWebServ/CreditOrgInfo.asmx?wsdl"
+ACRA_TOP_50="https://www.vbr.ru/banki/raiting/akra/top50/"
 MODEL_STORE = f'{DATA_HOME_FILES}/model/'
 
 # LOG CONSTANTS
