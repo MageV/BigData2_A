@@ -4,7 +4,7 @@ import pandas as pd
 
 from apputils.log import write_log
 from config.appconfig import *
-from providers.db_clickhouse import db_ret_okato
+from providers.db_clickhouse import *
 
 
 def df_recode_workers(df: pd.DataFrame):
@@ -15,8 +15,8 @@ def df_recode_workers(df: pd.DataFrame):
     return df_o
 
 
-def df_clean_for_ai(df: pd.DataFrame):
-    okatos = db_ret_okato(df)
+def df_clean_for_ai(df: pd.DataFrame,dbprovider):
+    okatos = dbprovider.db_ret_okato()
     df_o=pd.DataFrame()
     for item in okatos.itertuples():
         asyncio.run(write_log(message=f'OKATO:{item[1]}', severity=SEVERITY.INFO))

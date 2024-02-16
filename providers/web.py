@@ -116,9 +116,14 @@ class WebScraper:
     def get_banks(self):
         client = Client(URL_CBR_APP_SERVICE)
         client.settings = Settings(raw_response=True, strict=False)
-        response = client.service.RegionsEnum()
-        soup_banks = BeautifulSoup(response.content, 'lxml-xml')
+        response = client.service.EnumBIC()
+        strainer = SoupStrainer(["RN","intCode"])
+        soup_banks = BeautifulSoup(response.content, 'lxml-xml',parse_only=strainer).contents
+        code_lic=dict()
+        for i in range(0,len(soup_banks)-1,2):
+            code_lic[soup_banks[i].text]=soup_banks[i+1].text
         pass
 
     def get_top_50(self)-> pd.DataFrame:
+        self.get_banks()
         pass

@@ -9,8 +9,6 @@ from apputils.archivers import ArchiveManager
 from apputils.observers import ZipFileObserver
 from apputils.utils import loadxml, drop_zip, drop_xml, drop_csv
 from ml.ai_model import ai_learn
-from providers.db_clickhouse import *
-from providers.db_clickhouse import fill_glossary
 from providers.df import *
 from providers.web import WebScraper
 
@@ -20,15 +18,16 @@ warnings.filterwarnings("ignore")
 def app_init():
     a_manager = ArchiveManager()
     webparser = WebScraper()
+    webparser.get_top_50()
+    dbpovider = DBConnector()
     prc = 1 if (multiprocessing.cpu_count() - 4) == 0 else multiprocessing.cpu_count() - 4
     frame = pd.DataFrame(columns=['date_', 'workers', 'okved', 'region', 'typeface', 'workers_sum'])
-    # get_banks()
-    return a_manager, webparser, prc, frame
+    return a_manager, webparser, prc, frame, dbpovider
 
 
-def preprocess_xml(file_list, processors_count, debug=False):
+def preprocess_xml(file_list, processors_count, db_provider, debug=False):
     if debug:
-        result = get_minmax()
+        result = db_provider.get_minmax()
         return result.result_rows
     big_frame = pd.DataFrame(columns=['date_reg', 'workers', 'okved', 'region', 'typeface'])
     asyncio.run(write_log(message=f'Parse started at:{dt.datetime.now()}', severity=SEVERITY.INFO))
@@ -56,25 +55,25 @@ def preprocess_xml(file_list, processors_count, debug=False):
             #                                                                               'eur'],
             #                                   column_type_names=['Date', 'Int32', 'String', 'Int32', 'Int32', 'Float32',
             #                                                      'Float32', 'Float32'], settings=settings)
-            insert_data(big_frame)
+            db_provider.insert_data(big_frame)
             asyncio.run(write_log(message=f'Success to store data:{dt.datetime.now()}',
                                   severity=SEVERITY.INFO))
         except Exception as ex:
             asyncio.run(write_log(message=f'Error:{ex}', severity=SEVERITY.ERROR))
-        result = get_minmax()
+        result = db_provider.get_minmax()
         return result
 
 
 def prepare_f102(scraper: WebScraper):
-    scraper.get_top_50()
+    pass
 
 
 if __name__ == '__main__':
     freeze_support()
     asyncio.run(write_log(message=f'Started at:{dt.datetime.now()}', severity=SEVERITY.INFO))
-    archive_manager, parser, processors, df = app_init()
-    filelist = glob.glob(XML_STORE + '*.xml')
+    archive_manager, parser, processors, df, dbprovider = app_init()
     prepare_f102(scraper=parser)
+    filelist = glob.glob(XML_STORE + '*.xml')
     counter = 0
     total_counter = 0
     if not APP_FILE_DEBUG and not XML_FILE_DEBUG:
@@ -84,29 +83,29 @@ if __name__ == '__main__':
         observer = ZipFileObserver()
         store_fns = parser.get_FNS(url=URL_FOIV)
         archive_manager.extract(source=APP_FILE_DEBUG_NAME, dest=XML_STORE)
-        db_prepare_tables('app')
+        dbprovider.db_prepare_tables('app')
         df = preprocess_xml(file_list=filelist, processors_count=processors)
-        kvframe = fill_glossary(parser,df[0][0], df[0][1])
+        kvframe = dbprovider.fill_glossary(parser, df[0][0], df[0][1])
         asyncio.run(write_log(message=f'Update app_row:Started:{dt.datetime.now()}', severity=SEVERITY.INFO))
-        update_rows_kv(kvframe)
+        dbprovider.update_rows_kv(kvframe)
         asyncio.run(write_log(message=f'Update app_row:finished:{dt.datetime.now()}', severity=SEVERITY.INFO))
         gc.collect()
-        ai_learn(AI_FACTOR.AIF_KR, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_TREES,
+        ai_learn(AI_FACTOR.AIF_KR,db_provider=dbprovider, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_TREES,
                  msp_class=MSP_CLASS.MSP_UL)
     elif XML_FILE_DEBUG:
         #      archive_manager.extract(source=APP_FILE_DEBUG_NAME, dest=XML_STORE)
         files_csv = glob.glob(RESULT_STORE + '*.csv')
         # drop_csv()
         if not MERGE_DEBUG:
-            db_prepare_tables('app')
-            df = preprocess_xml(file_list=filelist, processors_count=processors)
+            dbprovider.db_prepare_tables('app')
+            df = preprocess_xml(file_list=filelist, processors_count=processors,db_provider=dbprovider)
         else:
-            df = preprocess_xml(file_list=filelist, processors_count=processors, debug=True)
-        kvframe = fill_glossary(parser,df[0][0], df[0][1])
+            df = preprocess_xml(file_list=filelist, processors_count=processors, debug=True,db_provider=dbprovider)
+        kvframe = dbprovider.fill_glossary(parser, df[0][0], df[0][1])
         asyncio.run(write_log(message=f'Update app_row:Started:{dt.datetime.now()}', severity=SEVERITY.INFO))
-        update_rows_kv(kvframe)
+        dbprovider.update_rows_kv(kvframe)
         asyncio.run(write_log(message=f'Update app_row:finished:{dt.datetime.now()}', severity=SEVERITY.INFO))
         gc.collect()
-        ai_learn(AI_FACTOR.AIF_KR, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_TREES,
+        ai_learn(AI_FACTOR.AIF_KR,db_provider=dbprovider, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_TREES,
                  msp_class=MSP_CLASS.MSP_UL)
     asyncio.run(write_log(message=f'finished at:{dt.datetime.now()}', severity=SEVERITY.INFO))
