@@ -22,7 +22,7 @@ def app_init():
     webparser = WebScraper()
     prc = 1 if (multiprocessing.cpu_count() - 4) == 0 else multiprocessing.cpu_count() - 4
     frame = pd.DataFrame(columns=['date_', 'workers', 'okved', 'region', 'typeface', 'workers_sum'])
-    get_banks()
+    #get_banks()
     return a_manager, webparser, prc, frame
 
 
@@ -83,7 +83,12 @@ if __name__ == '__main__':
         db_prepare_tables('app')
         df = preprocess_xml(file_list=filelist, processors_count=processors)
         kvframe = fill_glossary(df[0][0], df[0][1])
+        asyncio.run(write_log(message=f'Update app_row:Started:{dt.datetime.now()}', severity=SEVERITY.INFO))
         update_rows_kv(kvframe)
+        asyncio.run(write_log(message=f'Update app_row:finished:{dt.datetime.now()}', severity=SEVERITY.INFO))
+        gc.collect()
+        ai_learn(AI_FACTOR.AIF_KR, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_TREES,
+                 msp_class=MSP_CLASS.MSP_UL)
     elif XML_FILE_DEBUG:
         #      archive_manager.extract(source=APP_FILE_DEBUG_NAME, dest=XML_STORE)
         files_csv = glob.glob(RESULT_STORE + '*.csv')
