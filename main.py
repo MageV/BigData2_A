@@ -12,7 +12,7 @@ from ml.ai_model import ai_learn
 from providers.db_clickhouse import *
 from providers.db_clickhouse import fill_glossary
 from providers.df import *
-from providers.web import WebScraper, get_F102_symbols_cbr, get_banks
+from providers.web import WebScraper
 
 warnings.filterwarnings("ignore")
 
@@ -22,7 +22,7 @@ def app_init():
     webparser = WebScraper()
     prc = 1 if (multiprocessing.cpu_count() - 4) == 0 else multiprocessing.cpu_count() - 4
     frame = pd.DataFrame(columns=['date_', 'workers', 'okved', 'region', 'typeface', 'workers_sum'])
-    #get_banks()
+    # get_banks()
     return a_manager, webparser, prc, frame
 
 
@@ -50,12 +50,12 @@ def preprocess_xml(file_list, processors_count, debug=False):
             settings = {'async_insert': 1}
             asyncio.run(write_log(message=f'Trying to store data:{dt.datetime.now()}',
                                   severity=SEVERITY.INFO))
-#            click_client.insert_df(table='app_row', df=big_frame, column_names=['date_reg', 'workers', 'okved',
-#                                                                                'region', 'typeface', 'ratekey',
-#                                                                                'usd',
-#                                                                               'eur'],
-#                                   column_type_names=['Date', 'Int32', 'String', 'Int32', 'Int32', 'Float32',
-#                                                      'Float32', 'Float32'], settings=settings)
+            #            click_client.insert_df(table='app_row', df=big_frame, column_names=['date_reg', 'workers', 'okved',
+            #                                                                                'region', 'typeface', 'ratekey',
+            #                                                                                'usd',
+            #                                                                               'eur'],
+            #                                   column_type_names=['Date', 'Int32', 'String', 'Int32', 'Int32', 'Float32',
+            #                                                      'Float32', 'Float32'], settings=settings)
             insert_data(big_frame)
             asyncio.run(write_log(message=f'Success to store data:{dt.datetime.now()}',
                                   severity=SEVERITY.INFO))
@@ -65,11 +65,16 @@ def preprocess_xml(file_list, processors_count, debug=False):
         return result
 
 
+def prepare_f102(scraper: WebScraper):
+    scraper.get_top_50()
+
+
 if __name__ == '__main__':
     freeze_support()
     asyncio.run(write_log(message=f'Started at:{dt.datetime.now()}', severity=SEVERITY.INFO))
     archive_manager, parser, processors, df = app_init()
     filelist = glob.glob(XML_STORE + '*.xml')
+    prepare_f102(scraper=parser)
     counter = 0
     total_counter = 0
     if not APP_FILE_DEBUG and not XML_FILE_DEBUG:
@@ -77,11 +82,11 @@ if __name__ == '__main__':
         drop_xml()
         drop_csv()
         observer = ZipFileObserver()
-        store = parser.get_FNS()
+        store_fns = parser.get_FNS(url=URL_FOIV)
         archive_manager.extract(source=APP_FILE_DEBUG_NAME, dest=XML_STORE)
         db_prepare_tables('app')
         df = preprocess_xml(file_list=filelist, processors_count=processors)
-        kvframe = fill_glossary(df[0][0], df[0][1])
+        kvframe = fill_glossary(parser,df[0][0], df[0][1])
         asyncio.run(write_log(message=f'Update app_row:Started:{dt.datetime.now()}', severity=SEVERITY.INFO))
         update_rows_kv(kvframe)
         asyncio.run(write_log(message=f'Update app_row:finished:{dt.datetime.now()}', severity=SEVERITY.INFO))
@@ -97,7 +102,7 @@ if __name__ == '__main__':
             df = preprocess_xml(file_list=filelist, processors_count=processors)
         else:
             df = preprocess_xml(file_list=filelist, processors_count=processors, debug=True)
-        kvframe = fill_glossary(df[0][0], df[0][1])
+        kvframe = fill_glossary(parser,df[0][0], df[0][1])
         asyncio.run(write_log(message=f'Update app_row:Started:{dt.datetime.now()}', severity=SEVERITY.INFO))
         update_rows_kv(kvframe)
         asyncio.run(write_log(message=f'Update app_row:finished:{dt.datetime.now()}', severity=SEVERITY.INFO))

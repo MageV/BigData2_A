@@ -2,9 +2,6 @@ import asyncio
 import datetime as dt
 import glob
 import os
-from asyncio import as_completed
-from concurrent.futures import ProcessPoolExecutor
-
 import pandas as pd
 import pandasql as ps
 from bs4 import BeautifulSoup
@@ -27,7 +24,6 @@ def loadxml(name):
     with open(name, 'r') as f:
         xml = f.read()
         try:
-            #asyncio.run(write_log(message=f'file{name} at:{dt.datetime.now()}', severity=SEVERITY.INFO))
             soup = BeautifulSoup(xml, 'lxml-xml')
             return reducer(list(map(create_record, soup.find_all("Документ"))))
         except Exception as ex:
@@ -36,7 +32,6 @@ def loadxml(name):
 
 def create_record(doc) -> list:
     dat_vkl_msp = dt.datetime.strptime(doc["ДатаВклМСП"], '%d.%m.%Y')
-    #dat_vkl_msp = dat_vkl_msp.replace(day=1)
     sschr = int(doc["ССЧР"]) if "ССЧР" in doc.attrs else 1
     #    if "ОГРН" in doc.contents[0].attrs:
     #        ogrn = doc.contents[0]["ОГРН"]

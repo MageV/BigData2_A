@@ -13,8 +13,7 @@ GLOSSARY_STORE = f'{DATA_HOME_FILES}/config/json.config'
 RESULT_STORE = f'{DATA_HOME_FILES}/results/'
 URL_FOIV = 'https://www.nalog.gov.ru/opendata/7707329152-rsmp/'
 URL_CBR_RATES = "http://www.cbr.ru/DailyInfoWebServ/DailyInfo.asmx?wsdl"
-URL_CBR_APP_SERVICE= "http://www.cbr.ru/CreditInfoWebServ/CreditOrgInfo.asmx?wsdl"
-ACRA_TOP_50="https://www.vbr.ru/banki/raiting/akra/top50/"
+URL_CBR_APP_SERVICE = "http://www.cbr.ru/CreditInfoWebServ/CreditOrgInfo.asmx?wsdl"
 MODEL_STORE = f'{DATA_HOME_FILES}/model/'
 
 # LOG CONSTANTS
@@ -84,5 +83,6 @@ class MSP_CLASS(Enum):
 
 DEFAULT_ARC = ARC_TYPES.ZIP
 
-
-
+top50=[1000,3292,2272,1481,1326,354,1978,2209,963,2673,3349,3292,2312,2272,650,2590,1,328,436,2546,2275,2268,2309,
+       1354,2168,316,429,2210,2766,2306,3255,1810,2289,3311,2998,3354,2307,2440,3252,2763,2225,415,101,705,2879,588,
+       2443,1343,2733,2170,170]
