@@ -2,13 +2,14 @@ import asyncio
 import datetime as dt
 import gc
 import multiprocessing
-
+from sklearn.experimental import enable_halving_search_cv
 import joblib
 from joblib import parallel_backend
 from sklearn import metrics
 from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor, RandomForestClassifier, ExtraTreesClassifier
 from sklearn.linear_model import Lasso, Ridge, LogisticRegression
 from sklearn.model_selection import train_test_split, HalvingGridSearchCV
+
 from sklearn.naive_bayes import GaussianNB, BernoulliNB
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVR, NuSVR, LinearSVR

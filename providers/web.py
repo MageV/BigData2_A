@@ -9,7 +9,7 @@ from zeep import Client, Settings
 
 from apputils.log import write_log
 from config.appconfig import *
-from config.appconfig import URL_CBR
+from config.appconfig import URL_CBR_RATES
 
 
 class WebScraper:
@@ -73,7 +73,7 @@ class WebScraper:
 
 
 def get_rates_cbr(mindate=dt.datetime.strptime('01.01.2010', '%d.%m.%Y'), maxdate=dt.datetime.today()):
-    client = Client(URL_CBR)
+    client = Client(URL_CBR_RATES)
     client.settings = Settings(raw_response=True, strict=False)
     response_key_rate = client.service.KeyRate(mindate, maxdate)
     strainer_rate = SoupStrainer("KR")
@@ -108,5 +108,15 @@ def get_rates_cbr(mindate=dt.datetime.strptime('01.01.2010', '%d.%m.%Y'), maxdat
     # df.reset_index(inplace=True)
     return df
 
+
 def get_F102_symbols_cbr(mindate=dt.datetime.strptime('01.01.2010', '%d.%m.%Y'), maxdate=dt.datetime.today()):
+    client = Client(URL_CBR_APP_SERVICE)
+    client.settings = Settings(raw_response=True, strict=False)
+    pass
+
+def get_banks():
+    client = Client(URL_CBR_APP_SERVICE)
+    client.settings = Settings(raw_response=True, strict=False)
+    response=client.service.RegionsEnum()
+    soup_regions=BeautifulSoup(response.content, 'lxml-xml')
     pass
