@@ -18,7 +18,7 @@ warnings.filterwarnings("ignore")
 def app_init():
     a_manager = ArchiveManager()
     webparser = WebScraper()
-    webparser.get_top_50()
+    webparser.get_F102_symbols_cbr()
     dbpovider = DBConnector()
     prc = 1 if (multiprocessing.cpu_count() - 4) == 0 else multiprocessing.cpu_count() - 4
     frame = pd.DataFrame(columns=['date_', 'workers', 'okved', 'region', 'typeface', 'workers_sum'])

@@ -108,22 +108,32 @@ class WebScraper:
         # df.reset_index(inplace=True)
         return df
 
-    def get_F102_symbols_cbr(self, mindate=dt.datetime.strptime('01.01.2010', '%d.%m.%Y'), maxdate=dt.datetime.today()):
+    def get_F102_symbols_cbr(self, mindate=dt.datetime.strptime('01.01.2014', '%d.%m.%Y'), maxdate=dt.datetime.today()):
         client = Client(URL_CBR_APP_SERVICE)
         client.settings = Settings(raw_response=True, strict=False)
-        pass
-
-    def get_banks(self):
+        response_11112_dates = list(
+            map(lambda x: {x: BeautifulSoup(client.service.GetDatesForF102(x).content, 'lxml-xml').find_all('dateTime')
+                           }, top50))
         client = Client(URL_CBR_APP_SERVICE)
-        client.settings = Settings(raw_response=True, strict=False)
-        response = client.service.EnumBIC()
-        strainer = SoupStrainer(["RN","intCode"])
-        soup_banks = BeautifulSoup(response.content, 'lxml-xml',parse_only=strainer).contents
-        code_lic=dict()
-        for i in range(0,len(soup_banks)-1,2):
-            code_lic[soup_banks[i].text]=soup_banks[i+1].text
-        pass
+        result = dict(list())
+        strainer_rate = SoupStrainer(["symbol", "tp3"])
+        for item in response_11112_dates:
+            for k, v in item.items():
+                for item_values in v:
+                    str_date=item_values.find_next('dateTime').text.split('T')[0]
+                    cdate = dt.datetime.strptime(str_date,
+                                                 format('%Y-%m-%d'))
+                    if cdate <= mindate:
+                        break
+                    asyncio.run(write_log(message=f'Bank: {k} date:{item_values}', severity=SEVERITY.INFO))
+                    dt_value = cdate
+                    client.settings = Settings(raw_response=True, strict=False)
+                    soup = BeautifulSoup(client.service.Data102F(k, dt_value).content, parse_only=strainer_rate)
+                    for i in range(0, len(soup.contents) - 2, 2):
+                        res_key=f"{soup.contents[i].text}:{str_date}"
+                        if res_key in result:
+                            result[res_key].append(float(soup.contents[i + 1].text))
+                        else:
+                            result[res_key] = [float(soup.contents[i + 1].text)]
 
-    def get_top_50(self)-> pd.DataFrame:
-        self.get_banks()
         pass
