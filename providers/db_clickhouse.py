@@ -42,7 +42,7 @@ class DBConnector:
         okato_data = self.client.query_df(okato_sql)
         return okato_data
 
-    def insert_data(self, df: pd.DataFrame):
+    def db_insert_data(self, df: pd.DataFrame):
         settings = {'async_insert': 1}
         self.client.insert_df(table='app_row', df=df, column_names=['date_reg', 'workers', 'okved',
                                                                     'region', 'typeface', 'ratekey',
@@ -51,7 +51,7 @@ class DBConnector:
                               column_type_names=['Date', 'Int32', 'String', 'Int32', 'Int32', 'Float32',
                                                  'Float32', 'Float32'], settings=settings)
 
-    def get_minmax(self):
+    def db_get_minmax(self):
         return self.client.query(query="select min(date_reg),max(date_reg) from app_row")
 
     def update_rows_kv(self, kvframe: pd.DataFrame):
