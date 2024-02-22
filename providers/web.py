@@ -108,32 +108,48 @@ class WebScraper:
         # df.reset_index(inplace=True)
         return df
 
-    def get_F102_symbols_cbr(self, mindate=dt.datetime.strptime('01.01.2014', '%d.%m.%Y'), maxdate=dt.datetime.today()):
+    def get_F102_symbols_cbr(self, mindate=dt.datetime.strptime('01.06.2016', '%d.%m.%Y'), maxdate=dt.datetime.today(),
+                             massq=True):
         client = Client(URL_CBR_APP_SERVICE)
         client.settings = Settings(raw_response=True, strict=False)
         response_11112_dates = list(
-            map(lambda x: {x: BeautifulSoup(client.service.GetDatesForF102(x).content, 'lxml-xml').find_all('dateTime')
-                           }, top50))
+            map(lambda x: {
+                x: BeautifulSoup(client.service.GetDatesForF102(x).content, 'lxml-xml').find_all('dateTime')
+            }, topbanks))
         client = Client(URL_CBR_APP_SERVICE)
         result = dict(list())
-        strainer_rate = SoupStrainer(["symbol", "tp3"])
+        strainer_rate = SoupStrainer("f102")
         for item in response_11112_dates:
             for k, v in item.items():
                 for item_values in v:
-                    str_date=item_values.find_next('dateTime').text.split('T')[0]
+                    str_date = item_values.find_next('dateTime').text.split('T')[0]
                     cdate = dt.datetime.strptime(str_date,
-                                                 format('%Y-%m-%d'))
+                                                 format('%Y-%m-%d')).date()
                     if cdate <= mindate:
                         break
-                    asyncio.run(write_log(message=f'Bank: {k} date:{item_values}', severity=SEVERITY.INFO))
+
                     dt_value = cdate
                     client.settings = Settings(raw_response=True, strict=False)
-                    soup = BeautifulSoup(client.service.Data102F(k, dt_value).content, parse_only=strainer_rate)
-                    for i in range(0, len(soup.contents) - 2, 2):
-                        res_key=f"{soup.contents[i].text}:{str_date}"
-                        if res_key in result:
-                            result[res_key].append(float(soup.contents[i + 1].text))
-                        else:
-                            result[res_key] = [float(soup.contents[i + 1].text)]
-
+                    soup = BeautifulSoup(client.service.Data102F(k, dt_value).content, parse_only=strainer_rate).find_all()
+                    for i in range(0, len(soup)):
+                        counter=0
+                        for j in range(0,len(soup[i].contents)):
+                            if soup[i].contents[j].name=="symbol" or soup[i].contents[j].name=="tp3":
+                                counter+=1
+                        if counter==2:
+                            app_key_flt=list(filter(lambda x:x.name=="symbol",soup[i].contents))[0].text
+                            app_sum_flt=float(list(filter(lambda x:x.name=="tp3",soup[i].contents))[0].text)
+                            asyncio.run(write_log(message=f'Bank: {k} date:{item_values} key:{app_key_flt}', severity=SEVERITY.INFO))
+                            res_key = f"{app_key_flt}:{str_date}"
+                            if res_key in result:
+                                result[res_key].append(app_sum_flt)
+                            else:
+                                result[res_key] = [app_sum_flt]
+        write_frame = pd.DataFrame(columns=["date_form", "symbol", "symb_value"])
+        for k, v in result.items():
+            symb_value = sum(v)
+            symbol, date_form = k.split(':')
+            write_frame.loc[len(write_frame.index)] = [dt.datetime.strptime(date_form,
+                                                                            format('%Y-%m-%d')), symbol, symb_value]
+        return write_frame
         pass
