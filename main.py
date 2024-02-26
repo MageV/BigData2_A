@@ -7,7 +7,7 @@ import warnings
 
 from apputils.archivers import ArchiveManager
 from apputils.observers import ZipFileObserver
-from apputils.utils import loadxml, drop_zip, drop_xml, drop_csv
+from apputils.utils import loadxml, drop_zip, drop_xml, drop_csv, drop_xlsx
 from ml.ai_model import ai_learn
 from providers.df import *
 from providers.df import df_prepare_f102
@@ -67,6 +67,7 @@ if __name__ == '__main__':
         drop_zip()
         drop_xml()
         drop_csv()
+        drop_xlsx()
         observer = ZipFileObserver()
         store_fns = parser.get_FNS(url=URL_FOIV)
         archive_manager.extract(source=APP_FILE_DEBUG_NAME, dest=XML_STORE)
@@ -94,6 +95,8 @@ if __name__ == '__main__':
         else:
             df = preprocess_xml(file_list=filelist, processors_count=processors, debug=True, db_provider=dbprovider)
             f102frame = dbprovider.db_get_f102(11000)
+        drop_xlsx()
+        asyncio.run(parser.get_sors(processors_count=processors))
         kvframe = dbprovider.db_fill_glossary(parser, df[0][0], df[0][1])
         df_prepare_f102(f102frame, dbprovider.db_get_dates())
         asyncio.run(write_log(message=f'Update app_row:Started:{dt.datetime.now()}', severity=SEVERITY.INFO))

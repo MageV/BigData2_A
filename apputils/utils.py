@@ -7,7 +7,7 @@ import pandasql as ps
 from bs4 import BeautifulSoup
 
 from apputils.log import write_log
-from config.appconfig import SEVERITY, ZIP_FOIV, XML_STORE, RESULT_STORE
+from config.appconfig import *
 
 
 def list_inner_join(a: list, b: list):
@@ -28,6 +28,7 @@ def loadxml(name):
             return reducer(list(map(create_record, soup.find_all("Документ"))))
         except Exception as ex:
             asyncio.run(write_log(message=f'Error:{ex}', severity=SEVERITY.ERROR))
+
 
 
 def create_record(doc) -> list:
@@ -62,6 +63,10 @@ def drop_xml():
 
 def drop_csv():
     filelist = glob.glob(RESULT_STORE + '*.csv')
+    for _ in filelist:
+        os.remove(_)
+def drop_xlsx():
+    filelist=glob.glob(XLS_STORE+'*.*')
     for _ in filelist:
         os.remove(_)
 

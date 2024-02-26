@@ -1,5 +1,7 @@
 import asyncio
 import datetime as dt
+import glob
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from uuid import uuid1
 import aiofiles
 import aiohttp
@@ -46,12 +48,12 @@ class WebScraper:
             print(ex)
         return None
 
-    async def __get_file_FNS(self, name, store):
+    async def __get_file_web(self, name, store):
         # chunk_size = 64*1024*1024
         chunk_size = 8192
-        await write_log(message=f'Zip download started at: {dt.datetime.now()}', severity=SEVERITY.INFO)
+        await write_log(message=f'File download started at: {dt.datetime.now()}', severity=SEVERITY.INFO)
         timeout = aiohttp.ClientTimeout(total=60 * 60, sock_read=240)
-        async with aiohttp.ClientSession(timeout=timeout).get(name) as response:
+        async with aiohttp.ClientSession(timeout=timeout,headers=self.__headers).get(name) as response:
             async with aiofiles.open(store, mode="wb") as f:
                 while True:
                     chunk = await response.content.read(chunk_size)
@@ -59,7 +61,7 @@ class WebScraper:
                     if not chunk:
                         break
                     await f.write(chunk)
-        await write_log(message=f'Zip download completed at: {dt.datetime.now()}', severity=SEVERITY.INFO)
+        await write_log(message=f'File download completed at: {dt.datetime.now()}', severity=SEVERITY.INFO)
 
     def __parseHtml_TOP50(self, html) -> pd.DataFrame:
         result = pd.DataFrame()
@@ -69,7 +71,7 @@ class WebScraper:
         html = asyncio.run(self.__getHtml(url))
         file = self.__parseHtml_FNS(html=html)
         store = f'{ZIP_FOIV}{str(uuid1())}_new.zip'
-        asyncio.run(self.__get_file_FNS(name=file, store=store))
+        asyncio.run(self.__get_file_web(name=file, store=store))
         return store
 
     def get_rates_cbr(self, mindate=dt.datetime.strptime('01.01.2010', '%d.%m.%Y'), maxdate=dt.datetime.today()):
@@ -84,28 +86,8 @@ class WebScraper:
             dt_value = dt.datetime.strptime(item.find_next('DT').text.split('T')[0], format('%Y-%m-%d'))
             key_value = float(item.find_next('Rate').text)
             key_rates_spr.append((dt_value, key_value))
-        #       response_val_spr = client.service.EnumValutes(False)
-        #       soup_val_spr = BeautifulSoup(response_val_spr.content, 'lxml-xml')
-        #       valutes = soup_val_spr.find_all("EnumValutes")
-        #       for item in valutes:
-        #           temp_list = list(filter(None, item.text.split(' ')))
-        #           if temp_list[-1:][0] in KEY_VALUTES:
-        #               request = temp_list[0]
-        #               soup = BeautifulSoup((client.service.GetCursDynamic(mindate, maxdate, request)).content, "lxml-xml")
-        #               val_rowset = list()
-        #               for item in soup.find_all("ValuteCursDynamic"):
-        #                   date_val_date = dt.datetime.strptime(item.text.split('T')[0], format('%Y-%m-%d'))
-        ##                   curs_val_date = float(item.find_next("Vcurs").text)
-        #                  if date_val_date.day == 1:
-        #                      val_rowset.append((date_val_date, curs_val_date))
-        #              result_list.append(list(list_inner_join(key_rates_spr, val_rowset)))
         df = pd.DataFrame(key_rates_spr)
-        #        for _ in result_list:
-        #            frame=pd.DataFrame(_)
-        #            df=pd.concat([df,frame],ignore_index=True,axis=1)
-        #        df.drop(df.columns[[3,4]],axis=1,inplace=True)
         df.columns = ["date_", "key_rate"]  # ,"val_usd","val_eur"]
-        # df.reset_index(inplace=True)
         return df
 
     def get_F102_symbols_cbr(self, mindate=dt.datetime.strptime('01.06.2016', '%d.%m.%Y'), maxdate=dt.datetime.today(),
@@ -130,16 +112,18 @@ class WebScraper:
 
                     dt_value = cdate
                     client.settings = Settings(raw_response=True, strict=False)
-                    soup = BeautifulSoup(client.service.Data102F(k, dt_value).content, parse_only=strainer_rate).find_all()
+                    soup = BeautifulSoup(client.service.Data102F(k, dt_value).content,
+                                         parse_only=strainer_rate).find_all()
                     for i in range(0, len(soup)):
-                        counter=0
-                        for j in range(0,len(soup[i].contents)):
-                            if soup[i].contents[j].name=="symbol" or soup[i].contents[j].name=="tp3":
-                                counter+=1
-                        if counter==2:
-                            app_key_flt=list(filter(lambda x:x.name=="symbol",soup[i].contents))[0].text
-                            app_sum_flt=float(list(filter(lambda x:x.name=="tp3",soup[i].contents))[0].text)
-                            asyncio.run(write_log(message=f'Bank: {k} date:{item_values} key:{app_key_flt}', severity=SEVERITY.INFO))
+                        counter = 0
+                        for j in range(0, len(soup[i].contents)):
+                            if soup[i].contents[j].name == "symbol" or soup[i].contents[j].name == "tp3":
+                                counter += 1
+                        if counter == 2:
+                            app_key_flt = list(filter(lambda x: x.name == "symbol", soup[i].contents))[0].text
+                            app_sum_flt = float(list(filter(lambda x: x.name == "tp3", soup[i].contents))[0].text)
+                            asyncio.run(write_log(message=f'Bank: {k} date:{item_values} key:{app_key_flt}',
+                                                  severity=SEVERITY.INFO))
                             res_key = f"{app_key_flt}:{str_date}"
                             if res_key in result:
                                 result[res_key].append(app_sum_flt)
@@ -152,4 +136,37 @@ class WebScraper:
             write_frame.loc[len(write_frame.index)] = [dt.datetime.strptime(date_form,
                                                                             format('%Y-%m-%d')), symbol, symb_value]
         return write_frame
-        pass
+
+    async def __import_sors_list(self):
+        html = await self.__getHtml(URL_CBR_SORS)
+        soup = BeautifulSoup(html, features="lxml").find_all("a", class_="versions_item")
+        list_cred = list()
+        for item in soup:
+            if item.attrs['href'].__contains__("loans_sme_branches"):
+                list_cred.append("https://cbr.ru" + item.attrs['href'])
+        return list_cred
+
+    def _load_xlsx(self, name):
+        frame = pd.read_excel(name, engine="openpyxl",header=list(range(6)))
+        frame_date_str=name.split('_')[-1].split('.')[0]
+        frame_date=dt.datetime.strptime(frame_date_str,"%Y%m%d")
+        frame=frame.iloc[:,:4]
+        frame.columns=["region","total","msp_total","il_total"]
+        frame["msp_total"]-=frame["il_total"]
+        frame["date_rep"]=frame_date
+        return frame
+
+    def get_sors(self, processors_count):
+        file_list = asyncio.run(self.__import_sors_list())
+        for item in file_list:
+            name_xlsx = item.split('/')[-1]
+            asyncio.run(self.__get_file_web(item, XLS_STORE + name_xlsx))
+            asyncio.sleep(0.5)
+        xls_list = glob.glob(XLS_STORE + '*.xlsx')
+        frame_result = pd.DataFrame(columns=["region","total","msp_il_total","il"])
+        with (ProcessPoolExecutor(max_workers=processors_count,
+                                  max_tasks_per_child=len(xls_list) // processors_count + 20) as pool):
+            futures = [pool.submit(self._load_xlsx, item) for item in xls_list]
+            for future in as_completed(futures):
+                frame_result=pd.concat([frame_result,future.result()],axis=0, ignore_index=True)
+                pass

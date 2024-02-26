@@ -9,11 +9,13 @@ from pyhive import hive
 DATA_HOME_FILES = '/home/master/data'
 ZIP_FOIV = f'{DATA_HOME_FILES}/zips/'
 XML_STORE = f'{DATA_HOME_FILES}/unpacked/'
+XLS_STORE=f'{DATA_HOME_FILES}/xlsx/'
 GLOSSARY_STORE = f'{DATA_HOME_FILES}/config/json.config'
 RESULT_STORE = f'{DATA_HOME_FILES}/results/'
 URL_FOIV = 'https://www.nalog.gov.ru/opendata/7707329152-rsmp/'
 URL_CBR_RATES = "http://www.cbr.ru/DailyInfoWebServ/DailyInfo.asmx?wsdl"
 URL_CBR_APP_SERVICE = "http://www.cbr.ru/CreditInfoWebServ/CreditOrgInfo.asmx?wsdl"
+URL_CBR_SORS="https://cbr.ru/statistics/bank_sector/sors/"
 MODEL_STORE = f'{DATA_HOME_FILES}/model/'
 
 # LOG CONSTANTS
