@@ -54,7 +54,7 @@ class DBConnector:
     def db_get_minmax(self):
         return self.client.query(query="select min(date_reg),max(date_reg) from app_row")
 
-    def update_rows_kv(self, kvframe: pd.DataFrame):
+    def db_update_rows_kv(self, kvframe: pd.DataFrame):
         for item in kvframe.itertuples():
             date_reg = item[1]
             key_r = item[2]
@@ -66,8 +66,8 @@ class DBConnector:
                      "date_reg={date_reg:DateTime}")  # ,usd=={usd:Float32},eur={eur:Float32}
             self.client.command(query, parameters=parameters)
 
-    def fill_glossary(self, parser, mindate=dt.datetime.strptime('01.01.2010', '%d.%m.%Y'),
-                      maxdate=dt.datetime.today()):
+    def db_fill_glossary(self, parser, mindate=dt.datetime.strptime('01.01.2010', '%d.%m.%Y'),
+                         maxdate=dt.datetime.today()):
         asyncio.run(write_log(message=f'Load data from CBR:{dt.datetime.now()}', severity=SEVERITY.INFO))
         kv_dframe = parser.get_rates_cbr(mindate=mindate, maxdate=maxdate)
         self.db_prepare_tables(PRE_TABLES.PT_CBR)
@@ -78,7 +78,7 @@ class DBConnector:
         asyncio.run(write_log(message=f'Glossary:Finished:{dt.datetime.now()}', severity=SEVERITY.INFO))
         return kv_dframe
 
-    def fill_f102(self, frame):
+    def db_fill_f102(self, frame):
         self.db_prepare_tables(PRE_TABLES.PT_102)
         asyncio.run(write_log(message=f'Write f102 symbols:{dt.datetime.now()}', severity=SEVERITY.INFO))
         self.client.insert_df(table='F102Sym', df=frame, column_names=["date_form", "symbol", "symb_value"],
@@ -86,11 +86,11 @@ class DBConnector:
         asyncio.run(write_log(message=f'Write f102 symbols:{dt.datetime.now()} finished', severity=SEVERITY.INFO))
         pass
 
-    def get_f102(self,code):
+    def db_get_f102(self, code):
         query_df=f"select date_form,symb_value from F102Sym where symbol={code}"
         return self.client.query_df(query=query_df)
 
-    def get_dates(self):
+    def db_get_dates(self):
         query_df=f"select distinct(date_reg) from app_row order by date_reg"
         return self.client.query_df(query=query_df)
 
