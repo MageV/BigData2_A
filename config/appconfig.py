@@ -18,6 +18,7 @@ URL_FOIV = 'https://www.nalog.gov.ru/opendata/7707329152-rsmp/'
 URL_CBR_RATES = "http://www.cbr.ru/DailyInfoWebServ/DailyInfo.asmx?wsdl"
 URL_CBR_APP_SERVICE = "http://www.cbr.ru/CreditInfoWebServ/CreditOrgInfo.asmx?wsdl"
 URL_CBR_SORS = "https://cbr.ru/statistics/bank_sector/sors/"
+URL_CBR_SORS_ARC="https://cbr.ru/Queries/StatTable/Excel/302-13?lang=ru-RU"
 URL_CLASSIF_OKATO = "https://rosstat.gov.ru/opendata/7708234640-7708234640-okato"
 MODEL_STORE = f'{DATA_HOME_FILES}/model/'
 

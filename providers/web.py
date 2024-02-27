@@ -8,6 +8,8 @@ import aiofiles
 import aiohttp
 import pandas as pd
 from bs4 import BeautifulSoup, SoupStrainer
+from selenium import webdriver
+from selenium.webdriver.common.by import By
 from zeep import Client, Settings
 
 from apputils.log import write_log
@@ -172,7 +174,13 @@ class WebScraper:
         frame["date_rep"] = frame_date
         return frame
 
+    def _get_sors_archive(self):
+        asyncio.run(self.__get_file_web(URL_CBR_SORS_ARC,f"{XLS_STORE}sors_arc.xlsx"))
+        pass
+
+
     def get_sors(self, processors_count) -> pd.DataFrame:
+        self._get_sors_archive()
         file_list = asyncio.run(self.__import_sors_list())
         for item in file_list:
             name_xlsx = item.split('/')[-1]
