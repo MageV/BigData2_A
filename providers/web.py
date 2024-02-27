@@ -8,8 +8,6 @@ import aiofiles
 import aiohttp
 import pandas as pd
 from bs4 import BeautifulSoup, SoupStrainer
-from selenium import webdriver
-from selenium.webdriver.common.by import By
 from zeep import Client, Settings
 
 from apputils.log import write_log
