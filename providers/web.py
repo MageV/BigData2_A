@@ -12,7 +12,7 @@ from zeep import Client, Settings
 
 from apputils.log import write_log
 from config.appconfig import *
-from config.appconfig import URL_CBR_RATES
+
 
 warnings.filterwarnings("ignore")
 
