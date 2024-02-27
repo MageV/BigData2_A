@@ -18,6 +18,7 @@ from config.appconfig import URL_CBR_RATES
 
 warnings.filterwarnings("ignore")
 
+
 class WebScraper:
 
     def __init__(self):
@@ -174,10 +175,10 @@ class WebScraper:
         frame["date_rep"] = frame_date
         return frame
 
+    # TO-DO
     def _get_sors_archive(self):
-        asyncio.run(self.__get_file_web(URL_CBR_SORS_ARC,f"{XLS_STORE}sors_arc.xlsx"))
+        asyncio.run(self.__get_file_web(URL_CBR_SORS_ARC, f"{XLS_STORE}sors_arc.xlsx"))
         pass
-
 
     def get_sors(self, processors_count) -> pd.DataFrame:
         self._get_sors_archive()
