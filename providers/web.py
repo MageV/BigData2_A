@@ -1,6 +1,7 @@
 import asyncio
 import datetime as dt
 import glob
+import warnings
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from uuid import uuid1
 import aiofiles
@@ -13,6 +14,7 @@ from apputils.log import write_log
 from config.appconfig import *
 from config.appconfig import URL_CBR_RATES
 
+warnings.filterwarnings("ignore")
 
 class WebScraper:
 
@@ -53,7 +55,7 @@ class WebScraper:
         chunk_size = 8192
         await write_log(message=f'File download started at: {dt.datetime.now()}', severity=SEVERITY.INFO)
         timeout = aiohttp.ClientTimeout(total=60 * 60, sock_read=240)
-        async with aiohttp.ClientSession(timeout=timeout,headers=self.__headers).get(name) as response:
+        async with aiohttp.ClientSession(timeout=timeout, headers=self.__headers).get(name) as response:
             async with aiofiles.open(store, mode="wb") as f:
                 while True:
                     chunk = await response.content.read(chunk_size)
@@ -89,6 +91,20 @@ class WebScraper:
         df = pd.DataFrame(key_rates_spr)
         df.columns = ["date_", "key_rate"]  # ,"val_usd","val_eur"]
         return df
+
+    def get_regions(self) -> pd.DataFrame:
+        html = asyncio.run(self.__getHtml(URL_CLASSIF_OKATO))
+        soup = BeautifulSoup(html, "html.parser").find_all("a", href=True, class_="btn-sm")
+        for item in soup:
+            if item.attrs['href'].__contains__("data-"):
+                asyncio.run(self.__get_file_web(item.attrs['href'], f"{CLASSIF_STORE}okato.csv"))
+        csv_set = pd.read_csv(f"{CLASSIF_STORE}okato.csv", encoding='cp1251', delimiter=";")
+        csv_set.columns = ["okato_0", "okato_1", "okato_2", "okato_3", "okato_4", "regname", "capital", "okato_7",
+                           "okato_8", "okato_9", "date_1", "date_2"]
+        csv_set = csv_set[(csv_set["okato_1"] == 0) & (csv_set["okato_4"] == 1)]
+        okato = csv_set[["okato_0", "regname"]]
+        return okato
+        pass
 
     def get_F102_symbols_cbr(self, mindate=dt.datetime.strptime('01.06.2016', '%d.%m.%Y'), maxdate=dt.datetime.today(),
                              massq=True):
@@ -147,26 +163,29 @@ class WebScraper:
         return list_cred
 
     def _load_xlsx(self, name):
-        frame = pd.read_excel(name, engine="openpyxl",header=list(range(6)))
-        frame_date_str=name.split('_')[-1].split('.')[0]
-        frame_date=dt.datetime.strptime(frame_date_str,"%Y%m%d")
-        frame=frame.iloc[:,:4]
-        frame.columns=["region","total","msp_total","il_total"]
-        frame["msp_total"]-=frame["il_total"]
-        frame["date_rep"]=frame_date
+        frame = pd.read_excel(name, engine="openpyxl", header=list(range(6)))
+        frame_date_str = name.split('_')[-1].split('.')[0]
+        frame_date = dt.datetime.strptime(frame_date_str, "%Y%m%d")
+        frame = frame.iloc[:, :4]
+        frame.columns = ["region", "total", "msp_total", "il_total"]
+        frame["msp_total"] -= frame["il_total"]
+        frame["date_rep"] = frame_date
         return frame
 
-    def get_sors(self, processors_count):
+    def get_sors(self, processors_count) -> pd.DataFrame:
         file_list = asyncio.run(self.__import_sors_list())
         for item in file_list:
             name_xlsx = item.split('/')[-1]
             asyncio.run(self.__get_file_web(item, XLS_STORE + name_xlsx))
             asyncio.sleep(0.5)
         xls_list = glob.glob(XLS_STORE + '*.xlsx')
-        frame_result = pd.DataFrame(columns=["region","total","msp_il_total","il"])
+        frame_result = pd.DataFrame(columns=["region", "total", "msp_total", "il_total"])
         with (ProcessPoolExecutor(max_workers=processors_count,
                                   max_tasks_per_child=len(xls_list) // processors_count + 20) as pool):
             futures = [pool.submit(self._load_xlsx, item) for item in xls_list]
             for future in as_completed(futures):
-                frame_result=pd.concat([frame_result,future.result()],axis=0, ignore_index=True)
-                pass
+                frame_result = pd.concat([frame_result, future.result()], axis=0, ignore_index=True)
+        frame_result = frame_result[
+            (frame_result['region'].str.contains('ОКРУГ') == False) & (frame_result['region'].str[0] != ' ')]
+        frame_result["okato_code"] = 0
+        return frame_result

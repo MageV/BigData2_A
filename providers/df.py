@@ -52,3 +52,5 @@ def df_prepare_f102(frame: pd.DataFrame, dates_frame: pd.DataFrame):
     work_frame.interpolate(method='time',inplace=True)
     work_frame.fillna(0,inplace=True)
     pass
+
+
