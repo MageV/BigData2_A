@@ -68,12 +68,6 @@ class ARC_TYPES(Enum):
     UNKWN = auto()
 
 
-class AI_FACTOR(Enum):
-    AIF_KR = auto()
-    AIF_USD = auto()
-    AIF_EUR = auto()
-    AIF_NONE = auto()
-
 
 class AI_SCALER(Enum):
     AI_NONE = auto()

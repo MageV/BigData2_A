@@ -5,12 +5,13 @@ from concurrent.futures import as_completed, ProcessPoolExecutor
 from multiprocessing import freeze_support
 import warnings
 
+import pandas as pd
+
 from apputils.archivers import ArchiveManager
 from apputils.observers import ZipFileObserver
 from apputils.utils import loadxml, drop_zip, drop_xml, drop_csv, drop_xlsx
 from ml.ai_model import ai_learn
 from providers.df import *
-from providers.df import df_prepare_f102
 from providers.web import WebScraper
 
 warnings.filterwarnings("ignore")
@@ -63,11 +64,13 @@ if __name__ == '__main__':
     asyncio.run(write_log(message=f'Started at:{dt.datetime.now()}', severity=SEVERITY.INFO))
     archive_manager, parser, processors, df, dbprovider = app_init()
     filelist = glob.glob(XML_STORE + '*.xml')
-    okato=parser.get_regions()
-    credit_msp=parser.get_sors(processors_count=processors)
+    okato = parser.get_regions()
+    credit_msp = parser.get_sors(processors_count=processors)
+    credit_arc_msp = parser.get_sors_archive()
+    msp = pd.concat([credit_msp, credit_arc_msp], axis=0, ignore_index=True)
     dbprovider.db_write_okato(okato)
     dbprovider.db_prepare_tables(PRE_TABLES.PT_SORS)
-    dbprovider.db_write_sors(okato,credit_msp)
+    dbprovider.db_write_sors(okato, msp)
     if not APP_FILE_DEBUG and not XML_FILE_DEBUG:
         drop_zip()
         drop_xml()
@@ -81,12 +84,9 @@ if __name__ == '__main__':
         kvframe = dbprovider.db_fill_glossary(parser, df[0][0], df[0][1])
         asyncio.run(write_log(message=f'Update app_row:Started:{dt.datetime.now()}', severity=SEVERITY.INFO))
         dbprovider.db_update_rows_kv(kvframe)
-        f102frame = parser.get_F102_symbols_cbr(df[0][0], df[0][1])
-        dbprovider.db_fill_f102(f102frame)
-        df_prepare_f102(f102frame, dbprovider.db_get_dates())
         asyncio.run(write_log(message=f'Update app_row:finished:{dt.datetime.now()}', severity=SEVERITY.INFO))
         gc.collect()
-        ai_learn(AI_FACTOR.AIF_KR, db_provider=dbprovider, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_TREES,
+        ai_learn(db_provider=dbprovider, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_TREES,
                  msp_class=MSP_CLASS.MSP_UL)
     elif XML_FILE_DEBUG:
         #      archive_manager.extract(source=APP_FILE_DEBUG_NAME, dest=XML_STORE)
@@ -95,18 +95,25 @@ if __name__ == '__main__':
         if not MERGE_DEBUG:
             dbprovider.db_prepare_tables(PRE_TABLES.PT_APP)
             df = preprocess_xml(file_list=filelist, processors_count=processors, db_provider=dbprovider)
-            f102frame = parser.get_F102_symbols_cbr(df[0][0], df[0][1])
-            dbprovider.db_fill_f102(f102frame)
         else:
             df = preprocess_xml(file_list=filelist, processors_count=processors, debug=True, db_provider=dbprovider)
-            f102frame = dbprovider.db_get_f102(11000)
-        drop_xlsx()
+        #TO COPY IN NON-DEBUG part
         kvframe = dbprovider.db_fill_glossary(parser, df[0][0], df[0][1])
-        df_prepare_f102(f102frame, dbprovider.db_get_dates())
-        asyncio.run(write_log(message=f'Update app_row:Started:{dt.datetime.now()}', severity=SEVERITY.INFO))
+        okatos = dbprovider.get_unq_okatos()
+        regdates = dbprovider.get_unq_dates(typeface=MSP_CLASS.MSP_UL)
+        sors = dbprovider.get_sors()
+        raw_ul=df_interpolate_over_typeface(typeface=MSP_CLASS.MSP_UL, sors_frame=sors,
+                                     okatos_frame=okatos, dates_frame=regdates)
+        raw_fl=df_interpolate_over_typeface(typeface=MSP_CLASS.MSP_FL, sors_frame=sors,
+                                     okatos_frame=okatos, dates_frame=regdates)
+        asyncio.run(write_log(message=f'Update app_rows:Started:{dt.datetime.now()}', severity=SEVERITY.INFO))
+        dbprovider.update_app(raw_ul,MSP_CLASS.MSP_UL,processors)
+        dbprovider.update_app(raw_fl,MSP_CLASS.MSP_FL,processors)
         dbprovider.db_update_rows_kv(kvframe)
-        asyncio.run(write_log(message=f'Update app_row:finished:{dt.datetime.now()}', severity=SEVERITY.INFO))
+        asyncio.run(write_log(message=f'Update app_rows:finished:{dt.datetime.now()}', severity=SEVERITY.INFO))
         gc.collect()
-        ai_learn(AI_FACTOR.AIF_KR, db_provider=dbprovider, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_TREES,
+        ai_learn(db_provider=dbprovider, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_TREES,
                  msp_class=MSP_CLASS.MSP_UL)
+        ai_learn(db_provider=dbprovider, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_TREES,
+                 msp_class=MSP_CLASS.MSP_FL)
     asyncio.run(write_log(message=f'finished at:{dt.datetime.now()}', severity=SEVERITY.INFO))

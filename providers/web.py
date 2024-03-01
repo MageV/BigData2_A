@@ -13,7 +13,6 @@ from zeep import Client, Settings
 from apputils.log import write_log
 from config.appconfig import *
 
-
 warnings.filterwarnings("ignore")
 
 
@@ -21,16 +20,17 @@ class WebScraper:
 
     def __init__(self):
         self.__headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.110 Safari/537.36",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+                          "Chrome/70.0.3538.110 Safari/537.36",
             "Accept-Encoding": "gzip, deflate",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
             "Accept-Language": "en"
         }
 
     async def __getHtml(self, url):
-        async  with aiohttp.ClientSession() as session:
-            response = await session.get(url, headers=self.__headers)
-            return await response.text()
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=self.__headers) as resp:
+                return await resp.text()
 
     def __parseHtml_FNS(self, html):
         soup = BeautifulSoup(html, features="lxml")
@@ -65,10 +65,6 @@ class WebScraper:
                         break
                     await f.write(chunk)
         await write_log(message=f'File download completed at: {dt.datetime.now()}', severity=SEVERITY.INFO)
-
-    def __parseHtml_TOP50(self, html) -> pd.DataFrame:
-        result = pd.DataFrame()
-        return result
 
     def get_FNS(self, url=''):
         html = asyncio.run(self.__getHtml(url))
@@ -174,24 +170,40 @@ class WebScraper:
         return frame
 
     # TO-DO
-    def _get_sors_archive(self):
+    def get_sors_archive(self):
         asyncio.run(self.__get_file_web(URL_CBR_SORS_ARC, f"{XLS_STORE}sors_arc.xlsx"))
-        pass
+        xl = pd.ExcelFile(f"{XLS_STORE}sors_arc.xlsx")
+        frame_result = pd.DataFrame(columns=["region", "total", "msp_total", "il_total"])
+        for name in xl.sheet_names:
+            frame = xl.parse(name, header=list(range(8)))
+            frame = frame.iloc[:, :4]
+            frame.columns = ["region", "total", "msp_total", "il_total"]
+            frame["msp_total"] -= frame["il_total"]
+            date_sheet = dt.datetime.strptime((name.split(' '))[-1], format("%d.%m.%Y"))
+            frame['date_rep'] = date_sheet
+            frame_result = pd.concat([frame_result, frame], axis=0, ignore_index=True)
+        frame_result = frame_result[
+            (frame_result['region'].str.contains('ОКРУГ') == False) & (frame_result['region'].str[0] != ' ')]
+        frame_result = frame_result[(frame_result['region'].str.contains('округ') == False)]
+        frame_result["okato_code"] = 0
+        return frame_result
 
     def get_sors(self, processors_count) -> pd.DataFrame:
-        self._get_sors_archive()
         file_list = asyncio.run(self.__import_sors_list())
         for item in file_list:
             name_xlsx = item.split('/')[-1]
-            asyncio.run(self.__get_file_web(item, XLS_STORE + name_xlsx))
+            asyncio.run(self.__get_file_web(item, XLS_STORE + "sors_oper_" + name_xlsx))
             asyncio.sleep(0.5)
-        xls_list = glob.glob(XLS_STORE + '*.xlsx')
+        xls_list = glob.glob(XLS_STORE + 'sors_oper_*.xlsx')
         frame_result = pd.DataFrame(columns=["region", "total", "msp_total", "il_total"])
         with (ProcessPoolExecutor(max_workers=processors_count,
                                   max_tasks_per_child=len(xls_list) // processors_count + 20) as pool):
             futures = [pool.submit(self._load_xlsx, item) for item in xls_list]
             for future in as_completed(futures):
-                frame_result = pd.concat([frame_result, future.result()], axis=0, ignore_index=True)
+                try:
+                    frame_result = pd.concat([frame_result, future.result()], axis=0, ignore_index=True)
+                except ValueError as ex:
+                    break
         frame_result = frame_result[
             (frame_result['region'].str.contains('ОКРУГ') == False) & (frame_result['region'].str[0] != ' ')]
         frame_result["okato_code"] = 0

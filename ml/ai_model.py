@@ -22,8 +22,8 @@ from providers.df import df_clean_for_ai
 from providers.db_clickhouse import *
 
 
-def ai_clean(mean_over,db_provider, msp_type: MSP_CLASS, no_compare=True):
-    raw_data = db_provider.db_get_frames_by_facetype(msp_type.value, mean_over)
+def ai_clean(db_provider, msp_type: MSP_CLASS, no_compare=True):
+    raw_data = db_provider.db_get_frames_by_facetype(msp_type.value,)
     if not no_compare:
         raw_data = df_clean_for_ai(raw_data,db_provider)
         raw_data.drop(['date_reg', 'workers'], axis=1, inplace=True)
@@ -32,13 +32,13 @@ def ai_clean(mean_over,db_provider, msp_type: MSP_CLASS, no_compare=True):
     return raw_data
 
 
-def ai_learn(mean_over,db_provider, features=None, scaler=AI_SCALER.AI_NONE, models_class=AI_MODELS.AI_REGRESSORS,
+def ai_learn(db_provider, features=None, scaler=AI_SCALER.AI_NONE, models_class=AI_MODELS.AI_REGRESSORS,
              msp_class=MSP_CLASS.MSP_UL):
     if features is None:
         features = ['*']
     best_model = None
     models_results = {}
-    raw_data = ai_clean(mean_over,db_provider, msp_class, False)
+    raw_data = ai_clean(db_provider, msp_class, False)
     # построение исходных данных модели
     frame_cols = raw_data.columns.tolist()
     if not features.__contains__('*'):

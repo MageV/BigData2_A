@@ -1,11 +1,11 @@
 import asyncio
-
-import clickhouse_connect
-import pandas as pd
 import datetime as dt
+from concurrent.futures import ProcessPoolExecutor, as_completed
+
+import pandas as pd
 
 from apputils.log import write_log
-from config.appconfig import AI_FACTOR, SEVERITY, PRE_TABLES
+from config.appconfig import *
 
 
 # from providers.web import get_rates_cbr
@@ -27,15 +27,8 @@ class DBConnector:
         if table == PRE_TABLES.PT_SORS:
             self.client.command("alter table sors delete where 1=1")
 
-    def db_get_frames_by_facetype(self, ft, mean_over) -> pd.DataFrame:
-        qry_str = f"select date_reg, workers,region, ratekey,usd,eur from app_row where typeface={ft} order by date_reg,region"
-        if mean_over == AI_FACTOR.AIF_KR:
-            qry_str = qry_str.replace(',usd,eur', '')
-        elif mean_over == AI_FACTOR.AIF_EUR:
-            qry_str = qry_str.replace(',ratekey,usd', '')
-        elif mean_over == AI_FACTOR.AIF_USD:
-            qry_str = qry_str.replace('ratekey,', '')
-            qry_str = qry_str.replace(',eur', '')
+    def db_get_frames_by_facetype(self, ft) -> pd.DataFrame:
+        qry_str = f"select date_reg, workers,region, ratekey,credits_mass from app_row where typeface={ft} order by date_reg,region"
         raw_data: pd.DataFrame = self.client.query_df(qry_str)
         return raw_data
 
@@ -68,6 +61,22 @@ class DBConnector:
                      "date_reg={date_reg:DateTime}")  # ,usd=={usd:Float32},eur={eur:Float32}
             self.client.command(query, parameters=parameters)
 
+    def db_update_rows(self, frame_to_update, typeface):
+        for item in frame_to_update.itertuples():
+            date_reg = item[1]
+            region = item[2]
+            credits = item[3]
+            face = typeface.value
+            parameters = {
+                'date_reg': date_reg,
+                'okato': region,
+                'credits': credits,
+                'typeface': face
+            }
+            query = ("alter table app_row update credit_mass={credits:Float32} where "
+                     "date_req={date_reg:DateTime} and region={okato:Int32} and typeface={typeface:Int32}")
+            self.client.command(query, parameters)
+
     def db_fill_glossary(self, parser, mindate=dt.datetime.strptime('01.01.2010', '%d.%m.%Y'),
                          maxdate=dt.datetime.today()):
         asyncio.run(write_log(message=f'Load data from CBR:{dt.datetime.now()}', severity=SEVERITY.INFO))
@@ -79,22 +88,6 @@ class DBConnector:
                               column_type_names=['Date', 'Float32'])  # , 'Float32', 'Float32'])
         asyncio.run(write_log(message=f'Glossary:Finished:{dt.datetime.now()}', severity=SEVERITY.INFO))
         return kv_dframe
-
-    def db_fill_f102(self, frame):
-        self.db_prepare_tables(PRE_TABLES.PT_102)
-        asyncio.run(write_log(message=f'Write f102 symbols:{dt.datetime.now()}', severity=SEVERITY.INFO))
-        self.client.insert_df(table='F102Sym', df=frame, column_names=["date_form", "symbol", "symb_value"],
-                              column_type_names=["Date", "Int32", "Float32"])
-        asyncio.run(write_log(message=f'Write f102 symbols:{dt.datetime.now()} finished', severity=SEVERITY.INFO))
-        pass
-
-    def db_get_f102(self, code):
-        query_df = f"select date_form,symb_value from F102Sym where symbol={code}"
-        return self.client.query_df(query=query_df)
-
-    def db_get_dates(self):
-        query_df = f"select distinct(date_reg) from app_row order by date_reg"
-        return self.client.query_df(query=query_df)
 
     def db_write_okato(self, frame):
         counts = self.client.query_df("select count(*) from okato")
@@ -128,4 +121,47 @@ class DBConnector:
                                   column_names=["region", "total", "msp_total", "il_total", "date_rep", "okato"],
                                   column_type_names=["String", "Float64", "Float64", "Float64", "Date", "Int32"])
         self.client.command("alter table sors delete where okato=0")
+
+    def get_unq_dates(self, typeface):
+        if typeface == MSP_CLASS.MSP_UL:
+            query = f"select date_reg from serv_app_rows where typeface={typeface.value}"
+        else:
+            query = f"select date_req from serv_app_rows where typeface={typeface.value}"
+        return self.client.query_df(query)
+
+    def get_unq_okatos(self):
+        return self.client.query_df("select * from serv_sors_regs order by okato_reg")
+
+    def get_sors(self):
+        return self.client.query_df("select * from sors order by date_rep")
+
+    def get_app_reduced(self, typeface):
+        return self.client.query(
+            f"select * from serv_app_rows_reduced where typeface={typeface.value} order by date_reg")
+
+    def update_app(self, frame:pd.DataFrame, typeface, processors_count):
+        with (ProcessPoolExecutor(max_workers=processors_count,
+                                  max_tasks_per_child=len(frame) // processors_count + 20) as pool):
+            rowslist=[[row[0],row[2],row[3],typeface.value] for row in frame.itertuples()]
+            futures = [pool.submit(create_updated, item) for item in rowslist]
+            for future in as_completed(futures):
+                parameters=future.result()
+                asyncio.run(write_log(message=f'Parameters:{parameters}', severity=SEVERITY.INFO))
+                query = ("alter table app_row update credits_mass={credits:Float32} where "
+                         "date_reg={date_reg:DateTime} and region={okato:Int32} and typeface={typeface:Int32}")
+                self.client.command(query, parameters)
         pass
+
+def create_updated(row):
+    date_rep = row[0]
+    values = row[1]
+    okato = row[2]
+    typeface=row[3]
+    parameters = {
+        'date_reg': date_rep,
+        'okato': okato,
+        'credits': values,
+        'typeface': typeface
+    }
+    return parameters
+
