@@ -36,6 +36,7 @@ APP_FILE_DEBUG = True
 XML_FILE_DEBUG = True
 APP_FILE_DEBUG_NAME = ZIP_FOIV + 'd6d2fe2c-bf67-11ee-97b7-a20ddd0a7cd3_new.zip'
 MERGE_DEBUG = True
+CREDITS_DEBUG=True
 
 
 class PRE_TABLES(Enum):
@@ -76,11 +77,12 @@ class AI_SCALER(Enum):
 
 
 class AI_MODELS(Enum):
-    AI_REGRESSORS = auto()
-    AI_BEYES = auto()
-    AI_ML = auto()
-    AI_ALL = auto()
-    AI_TREES = ()
+    AI_REGRESSORS = "_regressors_"
+    AI_BEYES = "_beyes_"
+    AI_ML = "_svc_svr_"
+    AI_ALL = "_all_"
+    AI_CLASSIFIERS = "_classifiers_"
+    AI_EXPERIMENTAL="_experimental_"
 
 
 class MSP_CLASS(Enum):

@@ -70,9 +70,15 @@ def drop_xlsx():
     for _ in filelist:
         os.remove(_)
 
+def date_to_beg_month(in_date:dt.datetime):
+    month=in_date.month
+    year=in_date.year
+    day=1
+    return dt.datetime(year=year,month=month,day=day)
 
 def reducer(rowset: list):
     df = pd.DataFrame(data=rowset, columns=['date_reg', 'workers', 'okved', 'region', 'typeface'])
+    df['date_reg']=df['date_reg'].apply(lambda x:date_to_beg_month(x))
     query = ("select date_reg,sum(workers) as workers,okved,region,typeface from df group by date_reg,okved,region,"
              "typeface")
     try:

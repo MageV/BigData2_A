@@ -28,7 +28,7 @@ class DBConnector:
             self.client.command("alter table sors delete where 1=1")
 
     def db_get_frames_by_facetype(self, ft) -> pd.DataFrame:
-        qry_str = f"select date_reg, workers,region, ratekey,credits_mass from app_row where typeface={ft} order by date_reg,region"
+        qry_str = f"select date_reg, workers,okved,region,credits_mass from app_row where typeface={ft} order by date_reg,region"
         raw_data: pd.DataFrame = self.client.query_df(qry_str)
         return raw_data
 
@@ -40,14 +40,13 @@ class DBConnector:
     def db_insert_data(self, df: pd.DataFrame):
         settings = {'async_insert': 1}
         self.client.insert_df(table='app_row', df=df, column_names=['date_reg', 'workers', 'okved',
-                                                                    'region', 'typeface', 'ratekey',
-                                                                    'usd',
-                                                                    'eur'],
-                              column_type_names=['Date', 'Int32', 'String', 'Int32', 'Int32', 'Float32',
-                                                 'Float32', 'Float32'], settings=settings)
+                                                                    'region', 'typeface',
+                                                                    'credits_mass'],
+                              column_type_names=['Date', 'Int32', 'String', 'Int32', 'Float32',
+                                                 'Float32'], settings=settings)
 
     def db_get_minmax(self):
-        return self.client.query(query="select min(date_reg),max(date_reg) from app_row")
+        return self.client.query_df(query="select min(date_reg) as min_date,max(date_reg) as max_date from app_row")
 
     def db_update_rows_kv(self, kvframe: pd.DataFrame):
         for item in kvframe.itertuples():
@@ -73,7 +72,7 @@ class DBConnector:
                 'credits': credits,
                 'typeface': face
             }
-            query = ("alter table app_row update credit_mass={credits:Float32} where "
+            query = ("alter table app_row update credits_mass={credits:Float32} where "
                      "date_req={date_reg:DateTime} and region={okato:Int32} and typeface={typeface:Int32}")
             self.client.command(query, parameters)
 
@@ -140,16 +139,14 @@ class DBConnector:
             f"select * from serv_app_rows_reduced where typeface={typeface.value} order by date_reg")
 
     def update_app(self, frame:pd.DataFrame, typeface, processors_count):
-        with (ProcessPoolExecutor(max_workers=processors_count,
-                                  max_tasks_per_child=len(frame) // processors_count + 20) as pool):
-            rowslist=[[row[0],row[2],row[3],typeface.value] for row in frame.itertuples()]
-            futures = [pool.submit(create_updated, item) for item in rowslist]
-            for future in as_completed(futures):
-                parameters=future.result()
-                asyncio.run(write_log(message=f'Parameters:{parameters}', severity=SEVERITY.INFO))
-                query = ("alter table app_row update credits_mass={credits:Float32} where "
-                         "date_reg={date_reg:DateTime} and region={okato:Int32} and typeface={typeface:Int32}")
-                self.client.command(query, parameters)
+        self.client.command(f"alter table app_row delete where typeface={typeface.value}")
+        settings = {'async_insert': 1}
+        self.client.insert_df("app_row", frame,
+                              column_names=['date_reg', 'workers', 'okved',
+                                            'region',
+                                            'credits_mass','typeface'],
+                              column_type_names=['Date', 'Int32', 'String', 'Int32',  'Float32',
+                                                 'Int32'], settings=settings)
         pass
 
 def create_updated(row):
