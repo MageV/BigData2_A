@@ -150,7 +150,7 @@ class WebScraper:
             write_frame.loc[len(write_frame.index)] = [dt.datetime.strptime(date_form,
                                                                             format('%Y-%m-%d')), symbol, symb_value]
         return write_frame
-
+"""
     async def __import_sors_list(self):
         html = await self.__getHtml(URL_CBR_SORS)
         soup = BeautifulSoup(html, features="lxml").find_all("a", class_="versions_item")
@@ -169,7 +169,7 @@ class WebScraper:
         frame["msp_total"] -= frame["il_total"]
         frame["date_rep"] = frame_date
         return frame
-"""
+
     # TO-DO
     def get_sors_archive(self):
         asyncio.run(self.__get_file_web(URL_CBR_SORS_ARC, f"{XLS_STORE}sors_arc.xlsx"))
