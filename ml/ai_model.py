@@ -84,7 +84,7 @@ def ai_learn(db_provider, features=None, scaler=AI_SCALER.AI_NONE, models_class=
                               MLPClassifier(), AdaBoostClassifier(),
                               RandomForestClassifier(),
                               DecisionTreeClassifier(), ExtraTreesClassifier()]
-        models_dicsriminant = [LinearDiscriminantAnalysis(), QuadraticDiscriminantAnalysis()]
+        models_discsriminant = [LinearDiscriminantAnalysis(), QuadraticDiscriminantAnalysis()]
         # NO MEMORY FOR
         experimental_models = [GradientBoostingClassifier(), GaussianProcessClassifier(),
                                HistGradientBoostingRegressor()]
