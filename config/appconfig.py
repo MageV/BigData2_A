@@ -1,9 +1,6 @@
 import logging
 from enum import Enum, auto
 
-import clickhouse_connect
-from pyhive import hive
-
 # conn_str = 'clickhouse+asynch://default:z111111@localhost/app_storage'
 
 DATA_HOME_FILES = '/home/master/data'

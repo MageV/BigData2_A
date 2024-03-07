@@ -80,23 +80,32 @@ if __name__ == '__main__':
         archive_manager.extract(source=APP_FILE_DEBUG_NAME, dest=XML_STORE)
         dbprovider.db_prepare_tables(PRE_TABLES.PT_APP)
         df = preprocess_xml(file_list=filelist, processors_count=processors, db_provider=dbprovider)
-        kvframe = dbprovider.db_fill_glossary(parser, df[0][0], df[0][1])
-        asyncio.run(write_log(message=f'Update app_row:Started:{dt.datetime.now()}', severity=SEVERITY.INFO))
-        dbprovider.db_update_rows_kv(kvframe)
-        asyncio.run(write_log(message=f'Update app_row:finished:{dt.datetime.now()}', severity=SEVERITY.INFO))
+        okatos = dbprovider.get_unq_okatos()
+        regdates = dbprovider.db_get_minmax()
+        sors = dbprovider.get_sors()
+        app = dbprovider.db_get_frames_by_facetype(ft=MSP_CLASS.MSP_UL.value)
+        raw_data = df_fill_sors_apps(typeface=MSP_CLASS.MSP_UL, sors_frame=sors, okatos_frame=okatos,
+                                     app_frame=app, dates_frame=regdates)
+        dbprovider.update_app(raw_data, MSP_CLASS.MSP_UL, processors)
+        app = dbprovider.db_get_frames_by_facetype(ft=MSP_CLASS.MSP_FL.value)
+        raw_data = df_fill_sors_apps(typeface=MSP_CLASS.MSP_FL, sors_frame=sors, okatos_frame=okatos,
+                                     app_frame=app, dates_frame=regdates)
+        dbprovider.update_app(raw_data, MSP_CLASS.MSP_FL, processors)
+        asyncio.run(write_log(message=f'Finish for app_rows:FL:{dt.datetime.now()}', severity=SEVERITY.INFO))
         gc.collect()
-        ai_learn(db_provider=dbprovider, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_TREES)
+        ai_learn(db_provider=dbprovider, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_CLASSIFIERS)
+        ai_learn(db_provider=dbprovider, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_REGRESSORS)
+        ai_learn(db_provider=dbprovider, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_EXPERIMENTAL)
+        ai_learn(db_provider=dbprovider, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_BEYES)
     elif XML_FILE_DEBUG:
         #      archive_manager.extract(source=APP_FILE_DEBUG_NAME, dest=XML_STORE)
         files_csv = glob.glob(RESULT_STORE + '*.csv')
-        # drop_csv()
         if not MERGE_DEBUG:
             dbprovider.db_prepare_tables(PRE_TABLES.PT_APP)
             df = preprocess_xml(file_list=filelist, processors_count=processors, db_provider=dbprovider)
         else:
             df = preprocess_xml(file_list=filelist, processors_count=processors, debug=True, db_provider=dbprovider)
         # TO COPY IN NON-DEBUG part
-        #      kvframe = dbprovider.db_fill_glossary(parser, df[0][0], df[0][1])
         if not CREDITS_DEBUG:
             okatos = dbprovider.get_unq_okatos()
             regdates = dbprovider.db_get_minmax()

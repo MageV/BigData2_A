@@ -103,6 +103,7 @@ class WebScraper:
         return okato
         pass
 
+    """
     def get_F102_symbols_cbr(self, mindate=dt.datetime.strptime('01.06.2016', '%d.%m.%Y'), maxdate=dt.datetime.today(),
                              massq=True):
         client = Client(URL_CBR_APP_SERVICE)
@@ -168,7 +169,7 @@ class WebScraper:
         frame["msp_total"] -= frame["il_total"]
         frame["date_rep"] = frame_date
         return frame
-
+"""
     # TO-DO
     def get_sors_archive(self):
         asyncio.run(self.__get_file_web(URL_CBR_SORS_ARC, f"{XLS_STORE}sors_arc.xlsx"))
