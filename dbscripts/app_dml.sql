@@ -1,6 +1,6 @@
 -- app_storage.app_cbr definition
 
-CREATE TABLE app_storage.app_cbr
+CREATE TABLE IF NOT EXISTS app_storage.app_cbr
 (
 
     `date_` Date,
@@ -17,7 +17,7 @@ SETTINGS index_granularity = 8192;
 
 -- app_storage.app_row definition
 
-CREATE TABLE app_storage.app_row
+CREATE TABLE IF NOT EXISTS app_storage.app_row
 (
 
     `date_reg` Date,
@@ -40,7 +40,7 @@ SETTINGS index_granularity = 8192;
 
 -- app_storage.okato definition
 
-CREATE TABLE app_storage.okato
+CREATE TABLE IF NOT EXISTS app_storage.okato
 (
 
     `okato_code` Int64,
@@ -53,7 +53,7 @@ SETTINGS index_granularity = 8192;
 
 -- app_storage.sors definition
 
-CREATE TABLE app_storage.sors
+CREATE TABLE  IF NOT EXISTS app_storage.sors
 (
 
     `region` String,
@@ -74,7 +74,7 @@ SETTINGS index_granularity = 8192;
 
 -- app_storage.regions source
 
-CREATE VIEW app_storage.regions
+CREATE VIEW IF NOT EXISTS app_storage.regions
 (
 
     `region` Int32

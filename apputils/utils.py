@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 
 from apputils.log import write_log
 from config.appconfig import *
-
+from pathlib import Path
 
 def list_inner_join(a: list, b: list):
     d = {}
@@ -125,3 +125,15 @@ def string_to_list(i):
             return
         else:
             yield n
+
+def storage_init():
+    Path(DATA_HOME_FILES).mkdir(parents=True,exist_ok=True)
+    Path(ZIP_FOIV).mkdir(parents=True, exist_ok=True)
+    Path(XLS_STORE).mkdir(parents=True, exist_ok=True)
+    Path(XML_STORE).mkdir(parents=True, exist_ok=True)
+    Path(RESULT_STORE).mkdir(parents=True, exist_ok=True)
+    Path(CLASSIF_STORE).mkdir(parents=True, exist_ok=True)
+    Path(MODEL_STORE).mkdir(parents=True, exist_ok=True)
+    Path(LOG_STORE).mkdir(parents=True, exist_ok=True)
+
+

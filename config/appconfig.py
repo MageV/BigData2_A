@@ -7,10 +7,10 @@ DATA_HOME_FILES = '/home/master/data'
 ZIP_FOIV = f'{DATA_HOME_FILES}/zips/'
 XML_STORE = f'{DATA_HOME_FILES}/unpacked/'
 XLS_STORE = f'{DATA_HOME_FILES}/xlsx/'
-GLOSSARY_STORE = f'{DATA_HOME_FILES}/config/json.config'
 RESULT_STORE = f'{DATA_HOME_FILES}/results/'
 CLASSIF_STORE = f'{DATA_HOME_FILES}/classif/'
 MODEL_STORE = f'{DATA_HOME_FILES}/model/'
+LOG_STORE=f'{DATA_HOME_FILES}/logs/'
 
 URL_FOIV = 'https://www.nalog.gov.ru/opendata/7707329152-rsmp/'
 URL_CBR_RATES = "http://www.cbr.ru/DailyInfoWebServ/DailyInfo.asmx?wsdl"
@@ -22,7 +22,7 @@ URL_CLASSIF_OKATO = "https://rosstat.gov.ru/opendata/7708234640-7708234640-okato
 
 # LOG CONSTANTS
 LOG_TO = 'CONSOLE'
-LOG_FILE = f'{DATA_HOME_FILES}/logs/applog.log'
+LOG_FILE = f'{LOG_STORE}app_log.log'
 # MAX_DUMP_RECORDS = 10000000
 # BIGLIST_STORE = f'{DATA_HOME_FILES}/biglists/'
 

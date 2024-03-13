@@ -2,6 +2,7 @@ import asyncio
 import datetime as dt
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
+import clickhouse_connect
 import pandas as pd
 
 from apputils.log import write_log
@@ -161,4 +162,7 @@ def create_updated(row):
         'typeface': typeface
     }
     return parameters
+
+def db_create_storage():
+    pass
 

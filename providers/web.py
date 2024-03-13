@@ -43,7 +43,7 @@ class WebScraper:
         try:
             df = df.assign(fmtDate=pd.to_datetime(df['actual_data'], format='%d%M%Y', dayfirst=True))
             top: pd.DataFrame = df.sort_values(by='fmtDate', ascending=False).head(1)
-            top.to_json(GLOSSARY_STORE, orient='records', lines=True)
+            # top.to_json(GLOSSARY_STORE, orient='records', lines=True)
             del top['fmtDate']
             filename = top.to_string(header=False, index=False, index_names=False).replace(' ', '-')[:-1]
             return filename
@@ -151,6 +151,7 @@ class WebScraper:
                                                                             format('%Y-%m-%d')), symbol, symb_value]
         return write_frame
 """
+
     async def __import_sors_list(self):
         html = await self.__getHtml(URL_CBR_SORS)
         soup = BeautifulSoup(html, features="lxml").find_all("a", class_="versions_item")
