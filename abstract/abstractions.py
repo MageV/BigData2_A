@@ -1,3 +1,6 @@
+from abc import ABC, abstractmethod
+
+
 class MetaSingleton(type):
     _instances = {}
 
@@ -5,3 +8,13 @@ class MetaSingleton(type):
         if cls not in cls._instances:
             cls._instances[cls] = super(MetaSingleton, cls).__call__(*args, **kwargs)
         return cls._instances[cls]
+
+
+class AbstractModel(ABC):
+    @abstractmethod
+    def push_data(self, data):
+        pass
+
+    @abstractmethod
+    def learn(self):
+        pass

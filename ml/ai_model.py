@@ -4,6 +4,7 @@ import multiprocessing
 import pickle
 
 import joblib
+import numpy as np
 from catboost import CatBoostClassifier, CatBoostRegressor
 from joblib import parallel_backend
 from sklearn import metrics
@@ -36,8 +37,6 @@ def ai_clean(db_provider, msp_type: MSP_CLASS, classifiers=True):
         raw_data.drop(['date_reg'], axis=1, inplace=True)
     raw_data["facetype"] = msp_type.value
     return raw_data
-
-
 
 
 def ai_learn_v2(db_provider, features=None, scaler=AI_SCALER.AI_NONE, models_class=AI_MODELS.AI_REGRESSORS):
@@ -114,8 +113,9 @@ def ai_learn_v2(db_provider, features=None, scaler=AI_SCALER.AI_NONE, models_cla
             models = net_models
         for _ in range(len(models)):
             current_model = models[_]
-            current_name = current_model.__repr__().split('(')[0].lower()
-            asyncio.run(write_log(message=f'Model {models[_]} '
+            current_name = current_model.__repr__().replace('<','').split(' ')[0].lower()
+            current_name=current_name.split('.')[-1].replace('()','')
+            asyncio.run(write_log(message=f'Model {current_name} '
                                           f'started learning at:{dt.datetime.now()}', severity=SEVERITY.INFO))
             if current_name == 'elasticnetcv':
                 search = HalvingGridSearchCV(current_model, param_elastic_cv,
@@ -275,6 +275,7 @@ def ai_learn_v2(db_provider, features=None, scaler=AI_SCALER.AI_NONE, models_cla
             #                   "SGDR") or current_model.__str__().__contains__("NetCV") or current_model.__str__().__contains__("Bagging"):
             #               modelname = current_model.estimator_
             #           else:
+            estimation_accuracy = np.round(estimation_accuracy, 4)
             modelname = str(current_model.best_estimator_).split('(')[0]
             score = current_model.best_score_
             models_results.update(

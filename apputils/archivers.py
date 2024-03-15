@@ -2,7 +2,7 @@ import asyncio
 import os
 from zipfile import ZipFile
 
-from abstract.meta import MetaSingleton
+from abstract.abstractions import MetaSingleton
 from apputils.log import write_log
 from config.appconfig import *
 
