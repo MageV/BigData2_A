@@ -80,6 +80,7 @@ class AI_MODELS(Enum):
     AI_ALL = "_all_"
     AI_CLASSIFIERS = "_classifiers_"
     AI_EXPERIMENTAL="_experimental_"
+    AI_ELASTIC="_elastic_"
 
 
 class MSP_CLASS(Enum):

@@ -10,7 +10,7 @@ import pandas as pd
 from apputils.archivers import ArchiveManager
 from apputils.observers import ZipFileObserver
 from apputils.utils import loadxml, drop_zip, drop_xml, drop_csv, drop_xlsx
-from ml.ai_model import ai_learn
+from ml.ai_model import  ai_learn_v2
 from providers.df import *
 from providers.web import WebScraper
 
@@ -93,10 +93,10 @@ if __name__ == '__main__':
         dbprovider.update_app(raw_data, MSP_CLASS.MSP_FL, processors)
         asyncio.run(write_log(message=f'Finish for app_rows:FL:{dt.datetime.now()}', severity=SEVERITY.INFO))
         gc.collect()
-        ai_learn(db_provider=dbprovider, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_CLASSIFIERS)
-        ai_learn(db_provider=dbprovider, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_REGRESSORS)
-        ai_learn(db_provider=dbprovider, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_EXPERIMENTAL)
-        ai_learn(db_provider=dbprovider, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_BEYES)
+        ai_learn_v2(db_provider=dbprovider, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_CLASSIFIERS)
+        ai_learn_v2(db_provider=dbprovider, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_REGRESSORS)
+        ai_learn_v2(db_provider=dbprovider, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_EXPERIMENTAL)
+        ai_learn_v2(db_provider=dbprovider, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_BEYES)
     elif XML_FILE_DEBUG:
         #      archive_manager.extract(source=APP_FILE_DEBUG_NAME, dest=XML_STORE)
         files_csv = glob.glob(RESULT_STORE + '*.csv')
@@ -120,8 +120,9 @@ if __name__ == '__main__':
             dbprovider.update_app(raw_data, MSP_CLASS.MSP_FL, processors)
             asyncio.run(write_log(message=f'Finish for app_rows:FL:{dt.datetime.now()}', severity=SEVERITY.INFO))
         gc.collect()
-        ai_learn(db_provider=dbprovider, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_CLASSIFIERS)
-        ai_learn(db_provider=dbprovider, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_REGRESSORS)
-        ai_learn(db_provider=dbprovider, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_EXPERIMENTAL)
-        ai_learn(db_provider=dbprovider, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_BEYES)
+        ai_learn_v2(db_provider=dbprovider, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_CLASSIFIERS)
+        ai_learn_v2(db_provider=dbprovider, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_REGRESSORS)
+        ai_learn_v2(db_provider=dbprovider, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_ELASTIC)
+        #ai_learn_v2(db_provider=dbprovider, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_ML)
+        #ai_learn_v2(db_provider=dbprovider, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_BEYES)
     asyncio.run(write_log(message=f'finished at:{dt.datetime.now()}', severity=SEVERITY.INFO))

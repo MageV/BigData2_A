@@ -1,8 +1,8 @@
 import numpy as np
 
 param_elastic = {
-    'alpha': np.arange(0.01, 0.1, 0.05),
-    'l1_ratio': np.arange(0.0, 1.0, 0.1),
+    'alpha': np.round(np.arange(0.01, 0.1, 0.05), 2),
+    'l1_ratio': np.round(np.arange(0.0, 1.0, 0.1), 2),
     'fit_intercept': (True, False),
     'max_iter': range(10, 1000, 10),
     'positive': (True, False),
@@ -10,11 +10,13 @@ param_elastic = {
 }
 
 param_elastic_cv = {
-    'l1_ratio': np.arange(0.0, 1.0, 0.1),
+    'l1_ratio': np.round(np.arange(0.1, 1.0, 0.1), 2),
     'fit_intercept': (True, False),
     'positive': (True, False),
     'selection': ('cyclic', 'random'),
-    'cv': range(1, 10)
+    'cv': range(1, 10),
+    'n_alphas': range(1, 200, 5),
+    'max_iter':range(1000,2000,100)
 }
 
 param_rf = {
@@ -35,7 +37,8 @@ param_hbr = {
     'max_iter': [200]
 }
 param_svc = {
-    'C': [1, 10, 100]
+    'C': [1, 10, 100],
+    'kernel': ['poly', 'linear', 'rbf']
 }
 
 param_lr = {
@@ -69,7 +72,8 @@ param_gaussian_nb = {
 param_svr = {
     # 7 specified parameters
     'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
-    'gamma': [0.001, 0.01, 0.1, 1, 10, 100, 1000]
+    'gamma': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
+    'kernel': ['poly', 'linear', 'rbf']
 }
 
 param_rfc = {
@@ -134,4 +138,14 @@ param_logr_cv = {
     "penalty": ("l1", "l2", "elasticnet"),
     "solver": ("lbfgs", "liblinear", "newton-cg", "newton-cholesky", "sag", "saga"),
     "refit": (True, False),
+}
+
+param_cat_bst = {
+    "iterations": range(10, 100, 10),
+    "learning_rate": np.round(np.arange(0.10, 0.90, 0.05), 2)
+}
+param_cat_bst_rgr = {
+    "n_estimators": range(10, 100, 10),
+    "learning_rate": np.round(np.arange(0.10, 0.90, 0.10), 2),
+    "depth": range(1, 10)
 }

@@ -1,6 +1,7 @@
 import asyncio
 import datetime as dt
 import glob
+import os.path
 import warnings
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from uuid import uuid1
@@ -90,11 +91,13 @@ class WebScraper:
         return df
 
     def get_regions(self) -> pd.DataFrame:
-        html = asyncio.run(self.__getHtml(URL_CLASSIF_OKATO))
-        soup = BeautifulSoup(html, "html.parser").find_all("a", href=True, class_="btn-sm")
-        for item in soup:
-            if item.attrs['href'].__contains__("data-"):
-                asyncio.run(self.__get_file_web(item.attrs['href'], f"{CLASSIF_STORE}okato.csv"))
+        if not os.path.isfile(f"{CLASSIF_STORE}okato.csv"):
+            html = asyncio.run(self.__getHtml(URL_CLASSIF_OKATO))
+            soup = BeautifulSoup(html, "html.parser").find_all("a", href=True, class_="btn-sm")
+            for item in soup:
+                if item.attrs['href'].__contains__("data-"):
+                    asyncio.run(self.__get_file_web(item.attrs['href'], f"{CLASSIF_STORE}okato.csv"))
+
         csv_set = pd.read_csv(f"{CLASSIF_STORE}okato.csv", encoding='cp1251', delimiter=";")
         csv_set.columns = ["okato_0", "okato_1", "okato_2", "okato_3", "okato_4", "regname", "capital", "okato_7",
                            "okato_8", "okato_9", "date_1", "date_2"]
