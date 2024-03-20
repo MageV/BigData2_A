@@ -25,7 +25,7 @@ def loadxml(name):
         xml = f.read()
         try:
             soup = BeautifulSoup(xml, 'lxml-xml')
-            return reducer(list(map(create_record, soup.find_all("Документ"))))
+            return list2df(list(map(create_record, soup.find_all("Документ"))))
         except Exception as ex:
             asyncio.run(write_log(message=f'Error:{ex}', severity=SEVERITY.ERROR))
 
@@ -44,8 +44,8 @@ def create_record(doc) -> list:
         typeface = 0
     # inn = doc.contents[0]["ИННФЛ"]
     region_code = int(doc.contents[1]["КодРегион"])
-    strokved = ';'.join(set(map(lambda x: x["КодОКВЭД"].split(".")[0], doc.contents[2].contents)))
-    return [dat_vkl_msp, sschr, strokved, region_code, typeface]
+  #  strokved = ';'.join(set(map(lambda x: x["КодОКВЭД"].split(".")[0], doc.contents[2].contents)))
+    return [dat_vkl_msp, sschr,  region_code, typeface]#strokved,
 
 
 def create_record_v2(doc) -> list:
@@ -98,18 +98,11 @@ def date_to_beg_month(in_date: dt.datetime):
     return dt.datetime(year=year, month=month, day=day)
 
 
-def reducer(rowset: list):
-    df = pd.DataFrame(data=rowset, columns=['date_reg', 'workers', 'okved', 'region', 'typeface'])
+def list2df(rowset: list):
+    df = pd.DataFrame(data=rowset, columns=['date_reg', 'workers',  'region', 'typeface'])#'okved',
     df['date_reg'] = df['date_reg'].apply(lambda x: date_to_beg_month(x))
-    query = ("select date_reg,sum(workers) as workers,okved,region,typeface from df group by date_reg,okved,region,"
-             "typeface")
-    try:
-        resultset = ps.sqldf(query, locals())
-        resultset['date_reg'] = pd.to_datetime(resultset['date_reg'])
-        del df
-        return resultset
-    except Exception as ex:
-        asyncio.run(write_log(message=f'Error:{ex}', severity=SEVERITY.ERROR))
+    df['date_reg']=pd.to_datetime(df['date_reg'])
+    return df
 
 
 def debug_csv(df: pd.DataFrame):

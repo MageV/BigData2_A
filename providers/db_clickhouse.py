@@ -28,8 +28,12 @@ class DBConnector:
         if table == PRE_TABLES.PT_SORS:
             self.client.command("alter table sors delete where 1=1")
 
+    def drop_error_data(self):
+        pass
+   #     self.client.command("alter table app_row delete where okved=''")
+
     def db_get_frames_by_facetype(self, ft) -> pd.DataFrame:
-        qry_str = f"select date_reg, workers,okved,region,credits_mass from app_row where typeface={ft} order by date_reg,region"
+        qry_str = f"select date_reg, workers,region,credits_mass from app_row where typeface={ft} order by date_reg,region"#okved,
         raw_data: pd.DataFrame = self.client.query_df(qry_str)
         return raw_data
 
@@ -40,11 +44,11 @@ class DBConnector:
 
     def db_insert_data(self, df: pd.DataFrame):
         settings = {'async_insert': 1}
-        self.client.insert_df(table='app_row', df=df, column_names=['date_reg', 'workers', 'okved',
+        self.client.insert_df(table='app_row', df=df, column_names=['date_reg', 'workers',# 'okved',
                                                                     'region', 'typeface',
                                                                     'credits_mass'],
-                              column_type_names=['Date', 'Int32', 'String', 'Int32', 'Float32',
-                                                 'Float32'], settings=settings)
+                              column_type_names=['Date', 'Int32',  'Int32', 'Float32',
+                                                 'Float32'], settings=settings)#'String',
 
     def db_get_minmax(self):
         return self.client.query_df(query="select min(date_reg) as min_date,max(date_reg) as max_date from app_row")
@@ -143,11 +147,11 @@ class DBConnector:
         self.client.command(f"alter table app_row delete where typeface={typeface.value}")
         settings = {'async_insert': 1}
         self.client.insert_df("app_row", frame,
-                              column_names=['date_reg', 'workers', 'okved',
+                              column_names=['date_reg', 'workers', #'okved',
                                             'region',
                                             'credits_mass','typeface'],
-                              column_type_names=['Date', 'Int32', 'String', 'Int32',  'Float32',
-                                                 'Int32'], settings=settings)
+                              column_type_names=['Date', 'Int32',  'Int32',  'Float32',
+                                                 'Int32'], settings=settings)#'String',
         pass
 
 def create_updated(row):

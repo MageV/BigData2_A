@@ -149,3 +149,19 @@ param_cat_bst_rgr = {
     "learning_rate": np.round(np.arange(0.10, 0.90, 0.10), 2),
     "depth": range(1, 10)
 }
+
+param_nu_svc={
+    "kernel":['linear','poly','rbf','sigmoid','precomputed'],
+    "degree":range(3,10),
+    "gamma":('scale','auto'),
+    "decision_function":('ovo','ovr'),
+    "nu":[0.99,0.999,0.9999,1.0]
+}
+param_linear_svc={
+    "penalty":("l1","l2"),
+    "loss":("hinge","squared_hinge"),
+    "C":np.round(np.arange(0.1,5.0,0.1)),
+    "multi_class":("ovr","crammer_singer"),
+    "fit_intercept":(True,False),
+    "max_iter":range(1000,2000,100)
+}

@@ -29,7 +29,7 @@ from providers.df import df_clean_for_ai
 
 
 def ai_clean(db_provider, msp_type: MSP_CLASS, classifiers=True):
-    raw_data = db_provider.db_get_frames_by_facetype(msp_type.value, )
+    raw_data = db_provider.db_get_frames_by_facetype(msp_type.value)
     if classifiers:
         raw_data = df_clean_for_ai(raw_data, db_provider)
         raw_data.drop(['date_reg', 'workers'], axis=1, inplace=True)
@@ -58,8 +58,8 @@ def ai_learn_v2(db_provider, features=None, scaler=AI_SCALER.AI_NONE, models_cla
     else:
         criteria_list = frame_cols
     pre_work_data = raw_data[criteria_list]
-    label_encoder = LabelEncoder()
-    pre_work_data.loc[:, 'okved'] = label_encoder.fit_transform(pre_work_data.loc[:, 'okved'])
+    #label_encoder = LabelEncoder()
+    #pre_work_data.loc[:, 'okved'] = label_encoder.fit_transform(pre_work_data.loc[:, 'okved'])
     if models_class.value == '_classifiers_':
         df_X = pre_work_data.drop(['workers_ai'], axis=1)
         df_Y = pre_work_data['workers_ai'].values
@@ -82,17 +82,18 @@ def ai_learn_v2(db_provider, features=None, scaler=AI_SCALER.AI_NONE, models_cla
             X_train_scaled = scaler.fit_transform(X_train)
             X_test_scaled = scaler.fit_transform(X_test)
         models_beyes = [GaussianNB(), BernoulliNB()]
+        aSVR=[SVR(), NuSVR(), LinearSVR(),]
         net_models = [ElasticNetCV(), ElasticNet(), ]
         models_regressor = [LinearRegression(),
                             AdaBoostRegressor(),
                             Lasso(),  # Ridge(),
                             RandomForestRegressor(), DecisionTreeRegressor(), ExtraTreesRegressor(),
-                            BaggingRegressor(), SGDRegressor(), CatBoostRegressor(), SVR(), NuSVR(), LinearSVR(), ]
-        models_classifiers = [ LogisticRegression(), LogisticRegressionCV(),
+                            BaggingRegressor(), SGDRegressor(), CatBoostRegressor(), ]
+        models_classifiers = [SVC(), LinearSVC(), LogisticRegression(), LogisticRegressionCV(),
                               PassiveAggressiveClassifier(),
                               MLPClassifier(), AdaBoostClassifier(),
                               RandomForestClassifier(),CatBoostClassifier(),
-                              DecisionTreeClassifier(), ExtraTreesClassifier(), SVC(), NuSVC(), LinearSVC()]
+                              DecisionTreeClassifier(), ExtraTreesClassifier() ]
         # NO MEMORY FOR
         experimental_models = [GradientBoostingClassifier(), GaussianProcessClassifier(),
                                HistGradientBoostingRegressor()]
@@ -159,7 +160,17 @@ def ai_learn_v2(db_provider, features=None, scaler=AI_SCALER.AI_NONE, models_cla
                                              min_resources=20, cv=cv_rsk)
                 current_model = search
 
-            elif current_name.__contains__('svc'):
+            elif current_name.__contains__('nusvc'):
+                search = HalvingGridSearchCV(current_model, param_nu_svc,
+                                             verbose=1, factor=3, n_jobs=-1,
+                                             min_resources=20, cv=cv_rsk)
+                current_model = search
+            elif current_name.__contains__('linearsvc'):
+                search = HalvingGridSearchCV(current_model, param_linear_svc,
+                                             verbose=1, factor=3, n_jobs=-1,
+                                             min_resources=20, cv=cv_rsk)
+                current_model = search
+            elif current_name=='svc':
                 search = HalvingGridSearchCV(current_model, param_svc,
                                              verbose=1, factor=3, n_jobs=-1,
                                              min_resources=20, cv=cv_rsk)
@@ -265,16 +276,6 @@ def ai_learn_v2(db_provider, features=None, scaler=AI_SCALER.AI_NONE, models_cla
                 estimation_accuracy = metrics.accuracy_score(Y_test, result)
             else:
                 estimation_accuracy = metrics.r2_score(Y_test, result)
-            #            estimation_accuracy = metrics.accuracy_score(Y_test, result)
-            #            if models_class == AI_MODELS.AI_TREES:
-            #            estimation = metrics.r2_score(Y_test, result, multioutput="uniform_average")
-            #            else:
-            #                estimation = metrics.mean_absolute_error(Y_test, result)
-            modelname = ""
-            #           if current_model.__str__().__contains__("SVC") or current_model.__str__().__contains__(
-            #                   "SGDR") or current_model.__str__().__contains__("NetCV") or current_model.__str__().__contains__("Bagging"):
-            #               modelname = current_model.estimator_
-            #           else:
             estimation_accuracy = np.round(estimation_accuracy, 4)
             modelname = str(current_model.best_estimator_).split('(')[0]
             score = current_model.best_score_
@@ -284,8 +285,6 @@ def ai_learn_v2(db_provider, features=None, scaler=AI_SCALER.AI_NONE, models_cla
                 write_log(message=f"Model:{modelname}", severity=SEVERITY.INFO))
             asyncio.run(write_log(message=f"Good(>0.8):Medium(>0.6)"
                                           f" {estimation_accuracy}", severity=SEVERITY.INFO))
-            #            asyncio.run(write_log(message=f"ACCURACY: ,"
-            #                                         f" {estimation_accuracy}", severity=SEVERITY.INFO))
             if best_model is None:
                 best_model = current_model
                 last_estimation = estimation_accuracy
@@ -303,7 +302,7 @@ def ai_learn_v2(db_provider, features=None, scaler=AI_SCALER.AI_NONE, models_cla
             file.writelines(f"score:{last_estimation}")
         with open(f"{MODEL_STORE}{name}_parameters.json", "w+") as file:
             json.dump(best_model.best_params_, file)
-        with open(f'{MODEL_STORE}label_encoder{models_class.value}.pickle', 'wb') as file:
-            pickle.dump(label_encoder, file, pickle.HIGHEST_PROTOCOL)
+ #       with open(f'{MODEL_STORE}label_encoder{models_class.value}.pickle', 'wb') as file:
+ #           pickle.dump(label_encoder, file, pickle.HIGHEST_PROTOCOL)
     except Exception as ex:
         asyncio.run(write_log(message=f'{ex}  at:{dt.datetime.now()}', severity=SEVERITY.ERROR))
