@@ -103,7 +103,6 @@ if __name__ == '__main__':
         if not MERGE_DEBUG:
             dbprovider.db_prepare_tables(PRE_TABLES.PT_APP)
             df = preprocess_xml(file_list=filelist, processors_count=processors, db_provider=dbprovider)
-
         else:
             df = preprocess_xml(file_list=filelist, processors_count=processors, debug=True, db_provider=dbprovider)
         # TO COPY IN NON-DEBUG part
