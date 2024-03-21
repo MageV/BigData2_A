@@ -32,8 +32,14 @@ class DBConnector:
         pass
    #     self.client.command("alter table app_row delete where okved=''")
 
-    def db_get_frames_by_facetype(self, ft) -> pd.DataFrame:
-        qry_str = f"select date_reg, workers,region,credits_mass from app_row where typeface={ft} order by date_reg,region"#okved,
+    def db_get_frames_by_facetype(self, ft,having_zero_mass=True) -> pd.DataFrame:
+        if having_zero_mass:
+            qry_str = (f"select date_reg, workers,region,credits_mass from app_row where typeface={ft} order by"
+                       f" date_reg,region")  # okved,
+        else:
+            qry_str = (
+                f"select date_reg, workers,region,credits_mass from app_row where typeface={ft} and credits_mass>0"
+                f" and workers>0 order by date_reg,region")  # okved,
         raw_data: pd.DataFrame = self.client.query_df(qry_str)
         return raw_data
 
@@ -154,6 +160,16 @@ class DBConnector:
                                                  'Int32'], settings=settings)#'String',
         pass
 
+    def db_get_workers_limits(self,typeface):
+        if typeface == MSP_CLASS.MSP_UL:
+            query=f"select distinct(workers) as wrks from app_row where typeface={typeface.value} order by workers"
+            df=self.client.query_df(query)
+            a_min=df.iloc[1]
+            a_max=df.iloc[-2]
+            return [a_min[0],a_max[0]]
+        else:
+            return [0,1]
+
 def create_updated(row):
     date_rep = row[0]
     values = row[1]
@@ -167,6 +183,9 @@ def create_updated(row):
     }
     return parameters
 
+
 def db_create_storage():
     pass
+
+
 

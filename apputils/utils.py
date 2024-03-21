@@ -130,3 +130,8 @@ def storage_init():
     Path(LOG_STORE).mkdir(parents=True, exist_ok=True)
 
 
+def create_intervals(for_list):
+    res = [((for_list[i]), for_list[(i + 1) % len(for_list)])
+           for i in range(len(for_list) - 1)]
+    res.append((for_list[len(for_list) - 1], 10000))
+    return res
