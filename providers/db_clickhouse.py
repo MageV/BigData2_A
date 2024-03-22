@@ -28,18 +28,13 @@ class DBConnector:
         if table == PRE_TABLES.PT_SORS:
             self.client.command("alter table sors delete where 1=1")
 
-    def drop_error_data(self):
-        pass
-   #     self.client.command("alter table app_row delete where okved=''")
 
-    def db_get_frames_by_facetype(self, ft,having_zero_mass=True) -> pd.DataFrame:
-        if having_zero_mass:
-            qry_str = (f"select date_reg, workers,region,credits_mass from app_row where typeface={ft} order by"
+
+    #     self.client.command("alter table app_row delete where okved=''")
+
+    def db_get_frames_by_facetype(self, ft) -> pd.DataFrame:
+        qry_str = (f"select date_reg, sworkers,region from reduced_app_view where typeface={ft} order by"
                        f" date_reg,region")  # okved,
-        else:
-            qry_str = (
-                f"select date_reg, workers,region,credits_mass from app_row where typeface={ft} and credits_mass>0"
-                f" and workers>0 order by date_reg,region")  # okved,
         raw_data: pd.DataFrame = self.client.query_df(qry_str)
         return raw_data
 
@@ -50,26 +45,15 @@ class DBConnector:
 
     def db_insert_data(self, df: pd.DataFrame):
         settings = {'async_insert': 1}
-        self.client.insert_df(table='app_row', df=df, column_names=['date_reg', 'workers',# 'okved',
+        self.client.insert_df(table='app_row', df=df, column_names=['date_reg', 'workers',  # 'okved',
                                                                     'region', 'typeface',
                                                                     'credits_mass'],
-                              column_type_names=['Date', 'Int32',  'Int32', 'Float32',
-                                                 'Float32'], settings=settings)#'String',
+                              column_type_names=['Date', 'Int32', 'Int32', 'Float32',
+                                                 'Float32'], settings=settings)  # 'String',
 
     def db_get_minmax(self):
-        return self.client.query_df(query="select min(date_reg) as min_date,max(date_reg) as max_date from app_row")
-
-    def db_update_rows_kv(self, kvframe: pd.DataFrame):
-        for item in kvframe.itertuples():
-            date_reg = item[1]
-            key_r = item[2]
-            parameters = {'key_r': key_r,
-                          #         'usd': usd,
-                          #         'eur': eur,
-                          'date_reg': date_reg}
-            query = ("alter table app_row update ratekey={key_r:Float32} where "
-                     "date_reg={date_reg:DateTime}")  # ,usd=={usd:Float32},eur={eur:Float32}
-            self.client.command(query, parameters=parameters)
+        return self.client.query_df(
+            query="select min(date_reg) as min_date,max(date_reg) as max_date from reduced_app_view")
 
     def db_update_rows(self, frame_to_update, typeface):
         for item in frame_to_update.itertuples():
@@ -132,49 +116,39 @@ class DBConnector:
                                   column_type_names=["String", "Float64", "Float64", "Float64", "Date", "Int32"])
         self.client.command("alter table sors delete where okato=0")
 
-    def get_unq_dates(self, typeface):
-        if typeface == MSP_CLASS.MSP_UL:
-            query = f"select date_reg from serv_app_rows where typeface={typeface.value}"
-        else:
-            query = f"select date_req from serv_app_rows where typeface={typeface.value}"
-        return self.client.query_df(query)
-
     def get_unq_okatos(self):
         return self.client.query_df("select * from serv_sors_regs order by okato_reg")
 
     def get_sors(self):
         return self.client.query_df("select * from sors order by date_rep")
 
-    def get_app_reduced(self, typeface):
-        return self.client.query(
-            f"select * from serv_app_rows_reduced where typeface={typeface.value} order by date_reg")
-
-    def update_app(self, frame:pd.DataFrame, typeface, processors_count):
+    def update_app(self, frame: pd.DataFrame, typeface, processors_count):
         self.client.command(f"alter table app_row delete where typeface={typeface.value}")
         settings = {'async_insert': 1}
         self.client.insert_df("app_row", frame,
-                              column_names=['date_reg', 'workers', #'okved',
+                              column_names=['date_reg', 'workers',  # 'okved',
                                             'region',
-                                            'credits_mass','typeface'],
-                              column_type_names=['Date', 'Int32',  'Int32',  'Float32',
-                                                 'Int32'], settings=settings)#'String',
+                                            'credits_mass', 'typeface'],
+                              column_type_names=['Date', 'Int32', 'Int32', 'Float32',
+                                                 'Int32'], settings=settings)  # 'String',
         pass
 
-    def db_get_workers_limits(self,typeface):
+    def db_get_workers_limits(self, typeface):
         if typeface == MSP_CLASS.MSP_UL:
-            query=f"select distinct(workers) as wrks from app_row where typeface={typeface.value} order by workers"
-            df=self.client.query_df(query)
-            a_min=df.iloc[1]
-            a_max=df.iloc[-2]
-            return [a_min[0],a_max[0]]
+            query = f"select distinct(sworkers) as wrks from reduced_app_view where typeface={typeface.value} order by sworkers"
+            df = self.client.query_df(query)
+            a_min = df.iloc[1]
+            a_max = df.iloc[-2]
+            return [a_min[0], a_max[0]]
         else:
-            return [0,1]
+            return [0, 1]
+
 
 def create_updated(row):
     date_rep = row[0]
     values = row[1]
     okato = row[2]
-    typeface=row[3]
+    typeface = row[3]
     parameters = {
         'date_reg': date_rep,
         'okato': okato,
@@ -186,6 +160,3 @@ def create_updated(row):
 
 def db_create_storage():
     pass
-
-
-

@@ -6,18 +6,10 @@ from providers.db_clickhouse import *
 import pandasql as ps
 
 
-def df_recode_workers(df: pd.DataFrame, mmvalues, multiclass):
+def df_recode_workers(df: pd.DataFrame):
     df_o = df
-#    if multiclass:
-#        a_min = mmvalues[0]
-#        a_max = mmvalues[1]
-#        intervals=[i for i in range(a_min,a_max,10)]
-#        res = create_intervals(intervals)
-#        for i in range(len(res)):
-#            df_o.loc[(df_o['workers'] >= res[i][0]) & (df_o['workers'] <= res[i][1]), "workers_ai"] = i
-#    else:
-    cmpr = df_o['workers'].le(df_o['workers'].shift(1)).replace(True, 1).replace(False, 0)
-    df_o['workers_ai'] = cmpr.reset_index()['workers']
+    cmpr = df_o['sworkers'].le(df_o['sworkers'].shift(1)).replace(True, 1).replace(False, 0)
+    df_o['estimated'] = cmpr
     df_o.dropna(inplace=True)
     return df_o
 
@@ -27,14 +19,14 @@ def df_clean_for_ai(df: pd.DataFrame, dbprovider, msp_type, multiclass=False):
     df_o = pd.DataFrame()
     df_mm = dbprovider.db_get_workers_limits(msp_type)
     for item in okatos.itertuples():
-        asyncio.run(write_log(message=f'OKATO:{item[1]}', severity=SEVERITY.INFO))
-        subset = df[df['region'] == item[1]]
-        df_1 = df_recode_workers(subset, df_mm, False)
+        asyncio.run(write_log(message=f'OKATO:{item.region}', severity=SEVERITY.INFO))
+        subset = df[df['region'] == item.region]
+        df_1 = df_recode_workers(subset)
         df_o = pd.concat([df_o, df_1], axis=0, ignore_index=True)
     return df_o
 
 
-def df_fill_sors_apps(typeface, dates_frame, okatos_frame, sors_frame, app_frame):
+def df_fill_sors_apps(typeface, dates_frame,sors_frame, app_frame):
     if typeface == MSP_CLASS.MSP_UL:
         work_frame = sors_frame[sors_frame["msp_total"] > 0]
         work_frame = work_frame[['date_rep', 'okato', 'msp_total']]
@@ -49,4 +41,6 @@ def df_fill_sors_apps(typeface, dates_frame, okatos_frame, sors_frame, app_frame
             item[3]
     app_frame["typeface"] = typeface.value
     return app_frame
+
+
 

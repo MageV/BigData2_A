@@ -10,7 +10,7 @@ import pandas as pd
 from apputils.archivers import ArchiveManager
 from apputils.observers import ZipFileObserver
 from apputils.utils import loadxml, drop_zip, drop_xml, drop_csv, drop_xlsx
-from ml.ai_model import  ai_learn_v2
+from ml.ai_model import ai_learn_v2
 from providers.df import *
 from providers.web import WebScraper
 
@@ -22,7 +22,7 @@ def app_init():
     webparser = WebScraper()
     dbpovider = DBConnector()
     prc = 1 if (multiprocessing.cpu_count() - 4) == 0 else multiprocessing.cpu_count() - 4
-    frame = pd.DataFrame(columns=['date_', 'workers',  'region', 'typeface', 'workers_sum'])#'okved',
+    frame = pd.DataFrame(columns=['date_', 'workers', 'region', 'typeface', 'workers_sum'])  # 'okved',
     return a_manager, webparser, prc, frame, dbpovider
 
 
@@ -30,7 +30,7 @@ def preprocess_xml(file_list, processors_count, db_provider, debug=False):
     if debug:
         result = db_provider.db_get_minmax()
         return result
-    big_frame = pd.DataFrame(columns=['date_reg', 'workers',  'region', 'typeface']) #'okved',
+    big_frame = pd.DataFrame(columns=['date_reg', 'workers', 'region', 'typeface'])  # 'okved',
     asyncio.run(write_log(message=f'Parse started at:{dt.datetime.now()}', severity=SEVERITY.INFO))
     with (ProcessPoolExecutor(max_workers=processors_count,
                               max_tasks_per_child=len(file_list) // processors_count + 20) as pool):
@@ -106,26 +106,23 @@ if __name__ == '__main__':
         else:
             df = preprocess_xml(file_list=filelist, processors_count=processors, debug=True, db_provider=dbprovider)
         # TO COPY IN NON-DEBUG part
-        dbprovider.drop_error_data()
-        if not CREDITS_DEBUG:
-            okatos = dbprovider.get_unq_okatos()
-            regdates = dbprovider.db_get_minmax()
-            sors = dbprovider.get_sors()
-            app = dbprovider.db_get_frames_by_facetype(ft=MSP_CLASS.MSP_UL.value)
-            asyncio.run(write_log(message=f'Start for UL:{dt.datetime.now()}', severity=SEVERITY.INFO))
-            raw_data = df_fill_sors_apps(typeface=MSP_CLASS.MSP_UL, sors_frame=sors, okatos_frame=okatos,
+        okatos = dbprovider.get_unq_okatos()
+        regdates = dbprovider.db_get_minmax()
+        sors = dbprovider.get_sors()
+        app = dbprovider.db_get_frames_by_facetype(ft=MSP_CLASS.MSP_UL.value)
+        asyncio.run(write_log(message=f'Start for UL:{dt.datetime.now()}', severity=SEVERITY.INFO))
+        raw_data = df_fill_sors_apps(typeface=MSP_CLASS.MSP_UL, sors_frame=sors,
                                          app_frame=app, dates_frame=regdates)
-            dbprovider.update_app(raw_data, MSP_CLASS.MSP_UL, processors)
-            app = dbprovider.db_get_frames_by_facetype(ft=MSP_CLASS.MSP_FL.value)
-            asyncio.run(write_log(message=f'Start for FL:{dt.datetime.now()}', severity=SEVERITY.INFO))
-            raw_data = df_fill_sors_apps(typeface=MSP_CLASS.MSP_FL, sors_frame=sors, okatos_frame=okatos,
+        app = dbprovider.db_get_frames_by_facetype(ft=MSP_CLASS.MSP_FL.value)
+        asyncio.run(write_log(message=f'Start for FL:{dt.datetime.now()}', severity=SEVERITY.INFO))
+        raw_data_2 = df_fill_sors_apps(typeface=MSP_CLASS.MSP_FL, sors_frame=sors,
                                          app_frame=app, dates_frame=regdates)
-            dbprovider.update_app(raw_data, MSP_CLASS.MSP_FL, processors)
-            asyncio.run(write_log(message=f'Finish for app_rows:FL:{dt.datetime.now()}', severity=SEVERITY.INFO))
+        raw_data_total=pd.concat([raw_data,raw_data_2],axis=0,ignore_index=True)
+        asyncio.run(write_log(message=f'Finish for app_rows:FL:{dt.datetime.now()}', severity=SEVERITY.INFO))
         gc.collect()
-        ai_learn_v2(db_provider=dbprovider, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_CLASSIFIERS)
-        ai_learn_v2(db_provider=dbprovider, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_REGRESSORS)
-        ai_learn_v2(db_provider=dbprovider, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_ELASTIC)
-        #ai_learn_v2(db_provider=dbprovider, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_ML)
-        ai_learn_v2(db_provider=dbprovider, scaler=AI_SCALER.AI_STD_TRF, models_class=AI_MODELS.AI_BEYES)
+        ai_learn_v2(db_provider=dbprovider,appframe=raw_data_total,  models_class=AI_MODELS.AI_ALL)
+        #ai_learn_v2(db_provider=dbprovider,appframe=raw_data_total,  models_class=AI_MODELS.AI_REGRESSORS)
+        #ai_learn_v2(db_provider=dbprovider,appframe=raw_data_total,  models_class=AI_MODELS.AI_ELASTIC)
+        # ai_learn_v2(db_provider=dbprovider, models_class=AI_MODELS.AI_ML)
+        #ai_learn_v2(db_provider=dbprovider,  models_class=AI_MODELS.AI_BEYES)
     asyncio.run(write_log(message=f'finished at:{dt.datetime.now()}', severity=SEVERITY.INFO))
