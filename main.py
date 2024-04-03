@@ -49,7 +49,7 @@ def preprocess_xml(file_list, processors_count, db_provider, debug=False):
             settings = {'async_insert': 1}
             asyncio.run(write_log(message=f'Trying to store data:{dt.datetime.now()}',
                                   severity=SEVERITY.INFO))
-            db_provider.db_insert_data(big_frame)
+            db_provider.db_insert_data_app_row(big_frame)
             asyncio.run(write_log(message=f'Success to store data:{dt.datetime.now()}',
                                   severity=SEVERITY.INFO))
         except Exception as ex:
@@ -66,10 +66,15 @@ if __name__ == '__main__':
     okato = parser.get_regions()
     credit_msp = parser.get_sors(processors_count=processors)
     credit_arc_msp = parser.get_sors_archive()
-    msp = pd.concat([credit_msp, credit_arc_msp], axis=0, ignore_index=True)
+    debt_msp = parser.get_debt(processors_count=processors)
+    debt_arc_msp = parser.get_debt_arc()
+    msp_sors = pd.concat([credit_msp, credit_arc_msp], axis=0, ignore_index=True)
+    msp_debt = pd.concat([debt_msp, debt_arc_msp], axis=0, ignore_index=True)
     dbprovider.db_write_okato(okato)
     dbprovider.db_prepare_tables(PRE_TABLES.PT_SORS)
-    dbprovider.db_write_sors(okato, msp)
+    dbprovider.db_write_credit_info(okato, msp_sors, PRE_TABLES.PT_SORS)
+    dbprovider.db_prepare_tables(PRE_TABLES.PT_DEBT)
+    dbprovider.db_write_credit_info(okato, msp_debt, PRE_TABLES.PT_DEBT)
     if not APP_FILE_DEBUG and not XML_FILE_DEBUG:
         drop_zip()
         drop_xml()
@@ -82,15 +87,15 @@ if __name__ == '__main__':
         df = preprocess_xml(file_list=filelist, processors_count=processors, db_provider=dbprovider)
         okatos = dbprovider.get_unq_okatos()
         regdates = dbprovider.db_get_minmax()
-        sors = dbprovider.get_sors()
+        sors = dbprovider.get_credit_info()
         app = dbprovider.db_get_frames_by_facetype(ft=MSP_CLASS.MSP_UL.value)
         asyncio.run(write_log(message=f'Start for UL:{dt.datetime.now()}', severity=SEVERITY.INFO))
-        raw_data = df_fill_sors_apps(typeface=MSP_CLASS.MSP_UL, sors_frame=sors,
-                                     app_frame=app, dates_frame=regdates)
+        raw_data = df_fill_credit_apps(typeface=MSP_CLASS.MSP_UL, sors_frame=sors,
+                                       app_frame=app, dates_frame=regdates)
         app = dbprovider.db_get_frames_by_facetype(ft=MSP_CLASS.MSP_FL.value)
         asyncio.run(write_log(message=f'Start for FL:{dt.datetime.now()}', severity=SEVERITY.INFO))
-        raw_data_2 = df_fill_sors_apps(typeface=MSP_CLASS.MSP_FL, sors_frame=sors,
-                                       app_frame=app, dates_frame=regdates)
+        raw_data_2 = df_fill_credit_apps(typeface=MSP_CLASS.MSP_FL, sors_frame=sors,
+                                         app_frame=app, dates_frame=regdates)
         raw_data_total = pd.concat([raw_data, raw_data_2], axis=0, ignore_index=True)
         asyncio.run(write_log(message=f'Finish for app_rows:FL:{dt.datetime.now()}', severity=SEVERITY.INFO))
         gc.collect()
@@ -106,17 +111,18 @@ if __name__ == '__main__':
         # TO COPY IN NON-DEBUG part
         okatos = dbprovider.get_unq_okatos()
         regdates = dbprovider.db_get_minmax()
-        sors = dbprovider.get_sors()
+        sors = dbprovider.get_credit_info(PRE_TABLES.PT_SORS)
+        debt = dbprovider.get_credit_info(PRE_TABLES.PT_DEBT)
         app = dbprovider.db_get_frames_by_facetype(ft=MSP_CLASS.MSP_UL.value)
         asyncio.run(write_log(message=f'Start for UL:{dt.datetime.now()}', severity=SEVERITY.INFO))
-        raw_data = df_fill_sors_apps(typeface=MSP_CLASS.MSP_UL, sors_frame=sors,
-                                         app_frame=app, dates_frame=regdates)
+        raw_data = df_fill_credit_apps(typeface=MSP_CLASS.MSP_UL, sors_frame=sors, debt_frame=debt,
+                                       app_frame=app, dates_frame=regdates)
         app = dbprovider.db_get_frames_by_facetype(ft=MSP_CLASS.MSP_FL.value)
         asyncio.run(write_log(message=f'Start for FL:{dt.datetime.now()}', severity=SEVERITY.INFO))
-        raw_data_2 = df_fill_sors_apps(typeface=MSP_CLASS.MSP_FL, sors_frame=sors,
+        raw_data_2 = df_fill_credit_apps(typeface=MSP_CLASS.MSP_FL, sors_frame=sors, debt_frame=debt,
                                          app_frame=app, dates_frame=regdates)
-        raw_data_total=pd.concat([raw_data,raw_data_2],axis=0,ignore_index=True)
+        raw_data_total = pd.concat([raw_data, raw_data_2], axis=0, ignore_index=True)
         asyncio.run(write_log(message=f'Finish for app_rows:FL:{dt.datetime.now()}', severity=SEVERITY.INFO))
         gc.collect()
-        ai_learn_v2(db_provider=dbprovider,appframe=raw_data_total,  models_class=AI_MODELS.AI_ALL)
+        ai_learn_v2(db_provider=dbprovider, appframe=raw_data_total, models_class=AI_MODELS.AI_ALL)
     asyncio.run(write_log(message=f'finished at:{dt.datetime.now()}', severity=SEVERITY.INFO))

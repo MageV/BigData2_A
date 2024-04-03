@@ -67,6 +67,27 @@ ENGINE = MergeTree
 ORDER BY date_rep
 SETTINGS index_granularity = 8192;
 
+-- app_storage.debt definition
+
+CREATE TABLE app_storage.debt
+(
+
+    `region` String,
+
+    `total` Float64,
+
+    `msp_total` Float64,
+
+    `il_total` Float64,
+
+    `date_rep` Date,
+
+    `okato` Int32
+)
+ENGINE = MergeTree
+ORDER BY date_rep
+SETTINGS index_granularity = 8192;
+
 -- app_storage.reduced_app_view source
 
 CREATE VIEW app_storage.reduced_app_view

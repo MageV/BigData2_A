@@ -26,18 +26,27 @@ def df_clean_for_ai(df: pd.DataFrame, dbprovider, msp_type, multiclass=False):
     return df_o
 
 
-def df_fill_sors_apps(typeface, dates_frame,sors_frame, app_frame):
+def df_fill_credit_apps(typeface, dates_frame, sors_frame, app_frame, debt_frame):
     if typeface == MSP_CLASS.MSP_UL:
         work_frame = sors_frame[sors_frame["msp_total"] > 0]
+        debt_work=debt_frame[debt_frame["msp_total"]>0]
         work_frame = work_frame[['date_rep', 'okato', 'msp_total']]
+        debt_work = debt_work[['date_rep', 'okato', 'msp_total']]
     else:
         work_frame = sors_frame[sors_frame["il_total"] > 0]
         work_frame = work_frame[['date_rep', 'okato', 'il_total']]
+        debt_work = debt_frame[debt_frame["il_total"] > 0]
+        debt_work = debt_work[['date_rep', 'okato', 'il_total']]
+
     min_date = dates_frame['min_date'].values[0]
     max_date = dates_frame['max_date'].values[0]
     work_frame = work_frame[(work_frame["date_rep"] >= min_date) & (work_frame["date_rep"] <= max_date)]
     for item in work_frame.itertuples():
         app_frame.loc[(app_frame['date_reg'] == item.date_rep) & (app_frame['region'] == item.okato), "credits_mass"] = \
+            item[3]
+    debt_work=debt_work[(debt_work["date_rep"] >= min_date) & (debt_work["date_rep"] <= max_date)]
+    for item in debt_work.itertuples():
+        app_frame.loc[(app_frame['date_reg'] == item.date_rep) & (app_frame['region'] == item.okato), "debt_mass"] = \
             item[3]
     app_frame["typeface"] = typeface.value
     return app_frame

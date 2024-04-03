@@ -1,6 +1,6 @@
 import numpy as np
 
-param_elastic = {
+HP_ELASTICNET = {
     'alpha': np.round(np.arange(0.01, 0.1, 0.05), 2),
     'l1_ratio': np.round(np.arange(0.0, 1.0, 0.1), 2),
     'fit_intercept': (True, False),
@@ -9,7 +9,7 @@ param_elastic = {
     'selection': ('cyclic', 'random')
 }
 
-param_elastic_cv = {
+HP_ELASTICNETCV = {
     'l1_ratio': np.round(np.arange(0.1, 1.0, 0.1), 2),
     'fit_intercept': (True, False),
     'positive': (True, False),
@@ -19,36 +19,40 @@ param_elastic_cv = {
     'max_iter':range(1000,2000,100)
 }
 
-param_rf = {
+HP_TREES_REGRESSOR = {
     'n_estimators': range(1, 10),
     'max_features': ['log2', 'sqrt'],
     'min_samples_split': range(1, 15),
-    'max_depth': range(2, 20)
+    'max_depth': range(3, 40)
 }
-param_lasso = {
+HP_LASSO = {
     'alpha': [0.001, 0.01, 0.1, 0.5, 0.75, 0.79, 1, 1.5, 2, 5],
 }
-param_ridge = {
+HP_RIDGE = {
     'alpha': [0.001, 0.01, 0.1, 0.5, 0.75, 0.79, 1, 1.5, 2, 5],
     'solver': ['svd', 'cholesky', 'lsqr', 'sparse_cg', 'sag', 'saga', 'lbfgs']
 }
-param_hbr = {
+HP_HISTGRADBST_REGRESSOR = {
     'l2_regularization': [0.001, 0.01, 0.1, 0.2, 0.3, 0.4, 0.5, 0.75, 0.79, 1],
     'max_iter': [200]
 }
-param_svc = {
+HP_SVC = {
     'C': [1, 10, 100],
     'kernel': ['poly', 'linear', 'rbf']
 }
 
-param_lr = {
-    'penalty': ['l2', 'elasticnet'],
+HP_LOGSTIC_REGRESSION = {
+    'penalty': ['l2','l1', 'elasticnet'],
     'solver': ['saga', 'sag', 'liblinear', 'newton-cg', 'newton-cholesky'],
     #    'multi_class': ['multinomial','ovr'],
-    'C': [0.1, 0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.9, 1.0],
+    'C': [0.001, 0.01, 0.05, 0.07, 0.1, 0.5, 0.7, 0.75, 0.9, 1.0],
+    'tol':(0.000001,0.0001,0.001,0.01,0.1,0.9),
+    'fit_intercept':(True,False),
+    'max_iter':range(100,1000,10)
+
 }
 
-param_dtr = {
+HP_DECISIONTREE_REGRESSOR = {
     'max_features': ['log2', 'sqrt'],
     'min_samples_split': range(3, 20),
     'max_depth': range(3, 20),
@@ -56,53 +60,53 @@ param_dtr = {
 
 }
 
-param_xgboost = {
+HP_XGBOOST_REGRESSOR = {
     "max_depth": [3, 4, 5, 7],
     "gamma": [0, 0.25, 1],
     "scale_pos_weight": [1, 3, 5]
 }
-param_gaussian_cat_multi = {
+HP_NAIVE_BAYES = {
     'alpha': [0.001, 0.01, 0.1, 0.5, 0.75, 0.79, 1, 1.5, 2, 5],
     'fit_prior': [True, False]
 }
-param_gaussian_nb = {
+HP_NAIVE_GAUSSIAN = {
     'var_smoothing': [0.001, 0.01, 0.1, 1, 2, 5],
 }
 
-param_svr = {
+HP_SVR = {
     # 7 specified parameters
     'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
     'gamma': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
     'kernel': ['poly', 'linear', 'rbf']
 }
 
-param_rfc = {
+HP_FOREST_CLASSIFIERS = {
     'criterion': ('gini', 'log_loss', 'entropy'),
     'min_samples_split': range(2, 10),
-    'max_depth': range(2, 10),
-    'min_samples_leaf': range(2, 10),
+    'max_depth': range(2, 40),
+    'min_samples_leaf': range(2, 40),
 }
-param_ada_classifier = {
+HP_ADABOOST_CLASSIFIER = {
     'n_estimators': range(2, 50),
     'algorithm': ('SAMME', 'SAMME.R'),
 }
 
-param_ada_regressor = {
+HP_ADABOOST_REGRESSOR = {
     'n_estimators': range(2, 50),
     'loss': ('linear', 'square', 'exponential'),
 }
 
-param_mlp = {
+HP_MLP = {
     "activation": ('identity', 'logistic', 'tanh', 'relu'),
     "solver": ('lbfgs', 'sgd', 'adam'),
     "max_iter": range(10, 100)
 }
-param_gauss_proc = {
+HP_GAUSSIAN_BOOST_CLASSIFIER = {
     "n_restarts_optimizer": range(0, 10),
     "max_iter_predict": range(0, 10),
     "multi_class": ('one_vs_rest', 'one_vs_one')
 }
-param_grad_boost = {
+HP_GRAD_CLASSIFIER = {
     "loss": ("log_loss", "exponential"),
     "n_estimators": range(100, 200, 2),
     "criterion": ("fridman_mse", "squared_error"),
@@ -112,56 +116,64 @@ param_grad_boost = {
     'ccp_alpha': np.arange(0.0, 1.0, 0.1)
 }
 
-param_sgd_regr = {
+HP_SGD_REGESSOR = {
     'loss': ('squared_error', 'huber', 'epslion_insensitive', 'squared_epsilon_insensitive'),
     'penalty': ('l2', 'l1', 'elasticnet'),
     'max_iter': range(1000, 2000, 5),
     'learning_rate': ('optimal', 'constant', 'invscaling')
 }
 
-param_bagging_regr = {
+HP_BAGGING_REGRESSOR = {
     "n_estimators": range(1, 20)
 }
 
-param_linear_regr = {
+HP_LINEAR_REGRESSION = {
     "fit_intercept": (True, False),
 }
 
-param_pass_agg_clf = {
+HP_PASSIVE_AGGRESSIVE_CLASSIFIER = {
     "fit_intercept": (True, False),
     "max_iter": range(1000, 2000, 5),
 }
 
-param_logr_cv = {
-    "Cs": range(1, 20),
+HP_LOGISTICREGRESSIONCV = {
+    "Cs": range(1, 100,5),
     "fit_intercept": (True, False),
     "penalty": ("l1", "l2", "elasticnet"),
     "solver": ("lbfgs", "liblinear", "newton-cg", "newton-cholesky", "sag", "saga"),
     "refit": (True, False),
 }
 
-param_cat_bst = {
+HP_CATBOOST_CLASSIFIER = {
     "iterations": range(10, 100, 10),
     "learning_rate": np.round(np.arange(0.10, 0.90, 0.05), 2)
 }
-param_cat_bst_rgr = {
+HP_CATBOOST_REGRESSOR = {
     "n_estimators": range(10, 100, 10),
     "learning_rate": np.round(np.arange(0.10, 0.90, 0.10), 2),
     "depth": range(1, 10)
 }
 
-param_nu_svc={
+HP_NUSVC={
     "kernel":['linear','poly','rbf','sigmoid','precomputed'],
     "degree":range(3,10),
     "gamma":('scale','auto'),
     "decision_function":('ovo','ovr'),
     "nu":[0.99,0.999,0.9999,1.0]
 }
-param_linear_svc={
+HP_LINEAR_SVC={
     "penalty":("l1","l2"),
     "loss":("hinge","squared_hinge"),
     "C":np.round(np.arange(0.1,5.0,0.1)),
     "multi_class":("ovr","crammer_singer"),
     "fit_intercept":(True,False),
     "max_iter":range(1000,2000,100)
+}
+
+HP_RIDGE_CLASSIFIER={
+    "alpha":np.arange(1.0,10.0,0.2),
+    "fit_intercept":(True,False),
+    "max_iter":range(10,1000,50),
+    "solver":('svd','cholesky','lsqr', 'sparse_cg', 'sag', 'saga'),
+
 }

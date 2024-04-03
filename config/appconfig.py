@@ -17,6 +17,7 @@ URL_CBR_RATES = "http://www.cbr.ru/DailyInfoWebServ/DailyInfo.asmx?wsdl"
 URL_CBR_APP_SERVICE = "http://www.cbr.ru/CreditInfoWebServ/CreditOrgInfo.asmx?wsdl"
 URL_CBR_SORS = "https://cbr.ru/statistics/bank_sector/sors/"
 URL_CBR_SORS_ARC="https://cbr.ru/Queries/StatTable/Excel/302-13?lang=ru-RU"
+URL_CBR_DEBT_ARC="https://cbr.ru/Queries/StatTable/Excel/302-20?lang=ru-RU"
 URL_CLASSIF_OKATO = "https://rosstat.gov.ru/opendata/7708234640-7708234640-okato"
 
 
@@ -41,6 +42,7 @@ class PRE_TABLES(Enum):
     PT_APP = auto()
     PT_102 = auto()
     PT_SORS=auto()
+    PT_DEBT=auto()
 
 
 class DBENGINE(Enum):

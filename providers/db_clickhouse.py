@@ -27,6 +27,8 @@ class DBConnector:
             self.client.command("alter table F102Sym delete where 1=1")
         if table == PRE_TABLES.PT_SORS:
             self.client.command("alter table sors delete where 1=1")
+        if table==PRE_TABLES.PT_DEBT:
+            self.client.command("alter table debt delete where 1=1")
 
 
 
@@ -43,7 +45,7 @@ class DBConnector:
         okato_data = self.client.query_df(okato_sql)
         return okato_data
 
-    def db_insert_data(self, df: pd.DataFrame):
+    def db_insert_data_app_row(self, df: pd.DataFrame):
         settings = {'async_insert': 1}
         self.client.insert_df(table='app_row', df=df, column_names=['date_reg', 'workers',  # 'okved',
                                                                     'region', 'typeface',
@@ -89,16 +91,26 @@ class DBConnector:
             self.client.insert_df("okato", frame, column_names=["okato_code", "regname"],
                                   column_type_names=["Int64", "String"])
 
-    def db_write_sors(self, frame_okato, frame_sors):
-        self.client.insert_df("sors", frame_sors,
+    def db_write_credit_info(self, frame_okato, table_data, table_id):
+        tablename=""
+        if table_id==PRE_TABLES.PT_SORS:
+            tablename="sors"
+        elif table_id==PRE_TABLES.PT_DEBT:
+            tablename="debt"
+        self.client.insert_df(tablename, table_data,
                               column_names=["region", "total", "msp_total", "il_total", "date_rep", "okato"],
                               column_type_names=["String", "Float64", "Float64", "Float64", "Date", "Int32"])
         for item in frame_okato.itertuples():
             parameters = {'okval': item[1], 'reg': item[2]}
-            query = ("alter table sors update okato={okval:Int64} where "
-                     "region={reg:String}")
+            query=""
+            if table_id == PRE_TABLES.PT_SORS:
+                query = ("alter table sors update okato={okval:Int64} where "
+                         "region={reg:String}")
+            elif table_id == PRE_TABLES.PT_DEBT:
+                query = ("alter table debt update okato={okval:Int64} where "
+                         "region={reg:String}")
             self.client.command(query, parameters=parameters)
-        unknwn = self.client.query_df("select distinct(region) from sors where okato=0")
+        unknwn = self.client.query_df(f"select distinct(region) from {tablename} where okato=0")
         regions = list(map(lambda x: x.split(' '), unknwn['region'].tolist()))
         for _ in range(len(regions)):
             regions[_] = [x for x in regions[_] if len(x.strip()) > 2]
@@ -108,19 +120,25 @@ class DBConnector:
             filter_name = f"%{item[0].strip()}%"
             query = f"select okato_code from okato where regname like '{filter_name}'"
             result = self.client.query_df(query)
-            query = f"select * from sors where region like '{filter_name}'"
-            df = self.client.query_df(query)
-            df['okato'] = result['okato_code'].tolist()[0]
-            self.client.insert_df("sors", df,
+            if len(result)!=0:
+                query = f"select * from {tablename} where region like '{filter_name}'"
+                df = self.client.query_df(query)
+                df['okato'] = result['okato_code'].tolist()[0]
+                self.client.insert_df(tablename, df,
                                   column_names=["region", "total", "msp_total", "il_total", "date_rep", "okato"],
                                   column_type_names=["String", "Float64", "Float64", "Float64", "Date", "Int32"])
-        self.client.command("alter table sors delete where okato=0")
+        self.client.command(f"alter table {tablename} delete where okato=0")
 
     def get_unq_okatos(self):
         return self.client.query_df("select * from serv_sors_regs order by okato_reg")
 
-    def get_sors(self):
-        return self.client.query_df("select * from sors order by date_rep")
+    def get_credit_info(self,table_id):
+        tablename = ""
+        if table_id == PRE_TABLES.PT_SORS:
+            tablename = "sors"
+        elif table_id == PRE_TABLES.PT_DEBT:
+            tablename = "debt"
+        return self.client.query_df(f"select * from {tablename} order by date_rep")
 
     def update_app(self, frame: pd.DataFrame, typeface, processors_count):
         self.client.command(f"alter table app_row delete where typeface={typeface.value}")

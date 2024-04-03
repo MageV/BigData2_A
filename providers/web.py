@@ -117,7 +117,27 @@ class WebScraper:
                 list_cred.append("https://cbr.ru" + item.attrs['href'])
         return list_cred
 
-    def _load_xlsx(self, name):
+    async def __import_debt_list(self):
+        html=await self.__getHtml(URL_CBR_SORS)
+        soup = BeautifulSoup(html, features="lxml").find_all("a", class_="versions_item")
+        list_debt = list()
+        for item in soup:
+            if item.attrs['href'].__contains__("Debt_sme_divisions"):
+                list_debt.append("https://cbr.ru" + item.attrs['href'])
+        return list_debt
+
+
+    def _load_xlsx_sors(self, name):
+        frame = pd.read_excel(name, engine="openpyxl", header=list(range(6)))
+        frame_date_str = name.split('_')[-1].split('.')[0]
+        frame_date = dt.datetime.strptime(frame_date_str, "%Y%m%d")
+        frame = frame.iloc[:, :4]
+        frame.columns = ["region", "total", "msp_total", "il_total"]
+        frame["msp_total"] -= frame["il_total"]
+        frame["date_rep"] = frame_date
+        return frame
+
+    def _load_xlsx_debt(self, name):
         frame = pd.read_excel(name, engine="openpyxl", header=list(range(6)))
         frame_date_str = name.split('_')[-1].split('.')[0]
         frame_date = dt.datetime.strptime(frame_date_str, "%Y%m%d")
@@ -156,13 +176,52 @@ class WebScraper:
         frame_result = pd.DataFrame(columns=["region", "total", "msp_total", "il_total"])
         with (ProcessPoolExecutor(max_workers=processors_count,
                                   max_tasks_per_child=len(xls_list) // processors_count + 20) as pool):
-            futures = [pool.submit(self._load_xlsx, item) for item in xls_list]
+            futures = [pool.submit(self._load_xlsx_sors, item) for item in xls_list]
             for future in as_completed(futures):
                 try:
                     frame_result = pd.concat([frame_result, future.result()], axis=0, ignore_index=True)
                 except ValueError as ex:
                     break
         frame_result = frame_result[
+            (frame_result['region'].str.contains('ОКРУГ') == False) & (frame_result['region'].str[0] != ' ')&(frame_result['region'].str.contains('ФЕДЕРАЦИЯ') == False)]
+        frame_result["okato_code"] = 0
+        return frame_result
+
+    def get_debt(self, processors_count) -> pd.DataFrame:
+        file_list = asyncio.run(self.__import_debt_list())
+        for item in file_list:
+            name_xlsx = item.split('/')[-1]
+            asyncio.run(self.__get_file_web(item, XLS_STORE + "debt_oper_" + name_xlsx))
+            asyncio.sleep(0.5)
+        xls_list = glob.glob(XLS_STORE + 'debt_oper_*.xlsx')
+        frame_result = pd.DataFrame(columns=["region", "total", "msp_total", "il_total"])
+        with (ProcessPoolExecutor(max_workers=processors_count,
+                                  max_tasks_per_child=len(xls_list) // processors_count + 20) as pool):
+            futures = [pool.submit(self._load_xlsx_debt, item) for item in xls_list]
+            for future in as_completed(futures):
+                try:
+                    frame_result = pd.concat([frame_result, future.result()], axis=0, ignore_index=True)
+                except ValueError as ex:
+                    break
+        frame_result = frame_result[
+            (frame_result['region'].str.contains('ОКРУГ') == False) & (frame_result['region'].str[0] != ' ')&(frame_result['region'].str.contains('ФЕДЕРАЦИЯ') == False)]
+        frame_result["okato_code"] = 0
+        return frame_result
+
+    def get_debt_arc(self):
+        asyncio.run(self.__get_file_web(URL_CBR_DEBT_ARC, f"{XLS_STORE}debt_arc.xlsx"))
+        xl = pd.ExcelFile(f"{XLS_STORE}debt_arc.xlsx")
+        frame_result = pd.DataFrame(columns=["region", "total", "msp_total", "il_total"])
+        for name in xl.sheet_names:
+            frame = xl.parse(name, header=list(range(8)))
+            frame = frame.iloc[:, :4]
+            frame.columns = ["region", "total", "msp_total", "il_total"]
+            frame["msp_total"] -= frame["il_total"]
+            date_sheet = dt.datetime.strptime((name.split(' '))[-1], format("%d.%m.%Y"))
+            frame['date_rep'] = date_sheet
+            frame_result = pd.concat([frame_result, frame], axis=0, ignore_index=True)
+        frame_result = frame_result[
             (frame_result['region'].str.contains('ОКРУГ') == False) & (frame_result['region'].str[0] != ' ')]
+        frame_result = frame_result[(frame_result['region'].str.contains('округ') == False)]
         frame_result["okato_code"] = 0
         return frame_result
