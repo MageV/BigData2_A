@@ -124,5 +124,5 @@ if __name__ == '__main__':
         raw_data_total = pd.concat([raw_data, raw_data_2], axis=0, ignore_index=True)
         asyncio.run(write_log(message=f'Finish for app_rows:FL:{dt.datetime.now()}', severity=SEVERITY.INFO))
         gc.collect()
-        ai_learn_v2(db_provider=dbprovider, appframe=raw_data_total, models_class=AI_MODELS.AI_ALL)
+        ai_learn_v2(db_provider=dbprovider, appframe=raw_data_total, models_class=AI_MODELS.AI_ALL,is_multiclass=True)
     asyncio.run(write_log(message=f'finished at:{dt.datetime.now()}', severity=SEVERITY.INFO))

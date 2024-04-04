@@ -31,7 +31,13 @@ class WebScraper:
     async def __getHtml(self, url):
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=self.__headers) as resp:
+                #await session.close()
                 return await resp.text()
+
+
+
+
+
 
     def __parseHtml_FNS(self, html):
         soup = BeautifulSoup(html, features="lxml")

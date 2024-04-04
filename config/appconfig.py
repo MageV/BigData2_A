@@ -19,6 +19,7 @@ URL_CBR_SORS = "https://cbr.ru/statistics/bank_sector/sors/"
 URL_CBR_SORS_ARC="https://cbr.ru/Queries/StatTable/Excel/302-13?lang=ru-RU"
 URL_CBR_DEBT_ARC="https://cbr.ru/Queries/StatTable/Excel/302-20?lang=ru-RU"
 URL_CLASSIF_OKATO = "https://rosstat.gov.ru/opendata/7708234640-7708234640-okato"
+URL_CRED_RATES="https://cbr.ru/vfs/statistics/pdko/int_rat/loans_nonfin_by_region.xlsx"
 
 
 # LOG CONSTANTS

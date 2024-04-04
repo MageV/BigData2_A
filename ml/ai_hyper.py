@@ -175,5 +175,5 @@ HP_RIDGE_CLASSIFIER={
     "fit_intercept":(True,False),
     "max_iter":range(10,1000,50),
     "solver":('svd','cholesky','lsqr', 'sparse_cg', 'sag', 'saga'),
-
+    "tol":(0.0001,0.001,0.0005)
 }

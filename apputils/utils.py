@@ -10,6 +10,7 @@ from apputils.log import write_log
 from config.appconfig import *
 from pathlib import Path
 
+
 def list_inner_join(a: list, b: list):
     d = {}
     for row in b:
@@ -44,8 +45,8 @@ def create_record(doc) -> list:
         typeface = 0
     # inn = doc.contents[0]["ИННФЛ"]
     region_code = int(doc.contents[1]["КодРегион"])
-  #  strokved = ';'.join(set(map(lambda x: x["КодОКВЭД"].split(".")[0], doc.contents[2].contents)))
-    return [dat_vkl_msp, sschr,  region_code, typeface]#strokved,
+    #  strokved = ';'.join(set(map(lambda x: x["КодОКВЭД"].split(".")[0], doc.contents[2].contents)))
+    return [dat_vkl_msp, sschr, region_code, typeface]  # strokved,
 
 
 def create_record_v2(doc) -> list:
@@ -99,9 +100,9 @@ def date_to_beg_month(in_date: dt.datetime):
 
 
 def list2df(rowset: list):
-    df = pd.DataFrame(data=rowset, columns=['date_reg', 'workers',  'region', 'typeface'])#'okved',
+    df = pd.DataFrame(data=rowset, columns=['date_reg', 'workers', 'region', 'typeface'])  # 'okved',
     df['date_reg'] = df['date_reg'].apply(lambda x: date_to_beg_month(x))
-    df['date_reg']=pd.to_datetime(df['date_reg'])
+    df['date_reg'] = pd.to_datetime(df['date_reg'])
     return df
 
 
@@ -119,8 +120,9 @@ def string_to_list(i):
         else:
             yield n
 
+
 def storage_init():
-    Path(DATA_HOME_FILES).mkdir(parents=True,exist_ok=True)
+    Path(DATA_HOME_FILES).mkdir(parents=True, exist_ok=True)
     Path(ZIP_FOIV).mkdir(parents=True, exist_ok=True)
     Path(XLS_STORE).mkdir(parents=True, exist_ok=True)
     Path(XML_STORE).mkdir(parents=True, exist_ok=True)
@@ -130,8 +132,8 @@ def storage_init():
     Path(LOG_STORE).mkdir(parents=True, exist_ok=True)
 
 
-def create_intervals(for_list):
-    res = [((for_list[i]), for_list[(i + 1) % len(for_list)])
-           for i in range(len(for_list) - 1)]
-    res.append((for_list[len(for_list) - 1], 10000))
-    return res
+def multiclass_binning(frame, col_name):
+    binned = 'estimated'
+    labels = [-2,-1, 0, 1,2]
+    frame[binned], boundaries = pd.qcut(frame[col_name], q=5, precision=1, retbins=True,labels=labels)
+    return frame,boundaries,labels

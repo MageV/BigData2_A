@@ -22,27 +22,43 @@ from sklearn.svm import SVR, NuSVR, LinearSVR, SVC, NuSVC, LinearSVC
 from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
 from sklearn.ensemble import HistGradientBoostingRegressor
 
+from apputils.utils import multiclass_binning
 from ml.ai_hyper import *
 from providers.db_clickhouse import *
 from providers.df import df_clean_for_ai
 
 
-def ai_clean(db_provider, appframe, msp_type: MSP_CLASS):
-    raw_data = appframe.loc[appframe['typeface'] == msp_type.value]
-    raw_data = df_clean_for_ai(raw_data, db_provider, msp_type)
-    raw_data.drop(['date_reg', 'sworkers'], axis=1, inplace=True)
+def ai_clean(db_provider, appframe, msp_type: MSP_CLASS=MSP_CLASS.MSP_UL,is_multiclass=False):
+    if not is_multiclass:
+        raw_data = appframe.loc[appframe['typeface'] == msp_type.value]
+        raw_data = df_clean_for_ai(raw_data, db_provider, msp_type)
+        return raw_data
     # raw_data["facetype"] = msp_type.value
-    return raw_data
+    else:
+        #raw_data = appframe.loc[appframe['typeface'] == msp_type.value]
+        raw_data,boundaries,labels=multiclass_binning(appframe,'sworkers')
+        raw_data.drop(['date_reg', 'sworkers'], axis=1, inplace=True)
+        return raw_data,boundaries,labels
 
 
-def ai_learn_v2(db_provider, appframe, features=None, models_class=AI_MODELS.AI_REGRESSORS):
+def ai_learn_v2(db_provider, appframe, features=None, models_class=AI_MODELS.AI_REGRESSORS,is_multiclass=False):
     if features is None:
         features = ['*']
     best_model = None
+    boundaries=None
+    labels=None
+    best_scaler=None
     models_results = {}
-    raw_data_1 = ai_clean(db_provider, appframe, MSP_CLASS.MSP_UL)
-    raw_data_2 = ai_clean(db_provider, appframe, MSP_CLASS.MSP_FL)
-    raw_data = pd.concat([raw_data_1, raw_data_2], axis=0, ignore_index=True)
+    if not is_multiclass:
+        raw_data_1 = ai_clean(db_provider, appframe, MSP_CLASS.MSP_UL,is_multiclass)
+        raw_data_1.dropna(inplace=True)
+        raw_data_2 = ai_clean(db_provider, appframe, MSP_CLASS.MSP_FL,is_multiclass)
+        raw_data_2.dropna(inplace=True)
+        raw_data = pd.concat([raw_data_1, raw_data_2], axis=0, ignore_index=True)
+    else:
+        raw_data,boundaries,labels = ai_clean(db_provider, appframe,is_multiclass=is_multiclass)
+        raw_data.dropna(inplace=True)
+    #raw_data=raw_data.dropna(inplace=True)
     # построение исходных данных модели
     frame_cols = raw_data.columns.tolist()
     if not features.__contains__('*'):
@@ -57,27 +73,23 @@ def ai_learn_v2(db_provider, appframe, features=None, models_class=AI_MODELS.AI_
     cv_rsk = 5
     # Расчет моделей и выбор наилучшей
     with (parallel_backend("multiprocessing", n_jobs=multiprocessing.cpu_count() - 2)):
-        X_train, X_test, Y_train, Y_test = train_test_split(df_X, df_Y, test_size=0.4,
+        X_train, X_test, Y_train, Y_test = train_test_split(df_X, df_Y, test_size=0.25,
                                                             shuffle=True, random_state=42, stratify=df_Y)
 
         class_classifiers = False
-        scalers = [SplineTransformer(degree=3, n_knots=6),StandardScaler(copy=True), MinMaxScaler(copy=True),
-                   RobustScaler(copy=True), PowerTransformer(method='yeo-johnson',standardize=True, copy=True),
-                   QuantileTransformer(copy=True),]
+        scalers = [None,SplineTransformer(degree=3, n_knots=6), StandardScaler(copy=True), MinMaxScaler(copy=True),
+                   RobustScaler(copy=True), PowerTransformer(method='yeo-johnson', standardize=True, copy=True),
+                   QuantileTransformer(copy=True), ]
         models_beyes = [GaussianNB(), BernoulliNB()]
         aSVR = [SVR(), NuSVR(), LinearSVR(), ]
         net_models = [ElasticNetCV(), ElasticNet(), ]
-        models_regressor = [LinearRegression(),
-                            AdaBoostRegressor(),
-                            Lasso(), Ridge(),
-                            RandomForestRegressor(), DecisionTreeRegressor(), ExtraTreesRegressor(),
-                            BaggingRegressor(), SGDRegressor(), CatBoostRegressor(), ]
-        models_classifiers = [RidgeClassifier(), LogisticRegression(), LogisticRegressionCV(),
-                              PassiveAggressiveClassifier(),
-                              MLPClassifier(), AdaBoostClassifier(),
-                              RandomForestClassifier(),
+        models_regressor = [RandomForestRegressor(), DecisionTreeRegressor(), ExtraTreesRegressor(),
+                            SGDRegressor(), CatBoostRegressor(),LinearRegression(),
+                            AdaBoostRegressor(),Lasso(), Ridge(),]
+        models_classifiers = [RandomForestClassifier(),
                               DecisionTreeClassifier(), ExtraTreesClassifier(), CatBoostClassifier(), SVC(),
-                              LinearSVC(), ]
+                              LinearSVC(),RidgeClassifier(), LogisticRegression(), LogisticRegressionCV(),
+                              MLPClassifier(), AdaBoostClassifier(),PassiveAggressiveClassifier(),]
         # NO MEMORY FOR
         experimental_models = [GradientBoostingClassifier(), GaussianProcessClassifier(),
                                HistGradientBoostingRegressor()]
@@ -89,7 +101,7 @@ def ai_learn_v2(db_provider, appframe, features=None, models_class=AI_MODELS.AI_
         #        elif models_class == AI_MODELS.AI_ML:
         #            models = models_ML
         elif models_class == AI_MODELS.AI_ALL:
-            models = models_classifiers + models_regressor + models_beyes + experimental_models  # + models_ML
+            models =  models_regressor+net_models+models_classifiers + models_beyes   #+ experimental_models  #
         elif models_class == AI_MODELS.AI_CLASSIFIERS:
             models = models_classifiers
         elif models_class == AI_MODELS.AI_EXPERIMENTAL:
@@ -103,149 +115,149 @@ def ai_learn_v2(db_provider, appframe, features=None, models_class=AI_MODELS.AI_
 
             if current_name == 'elasticnetcv':
                 search = HalvingGridSearchCV(current_model, HP_ELASTICNETCV,
-                                             verbose=1, n_jobs=-1,  factor=2,
+                                             verbose=1, n_jobs=-1, factor=2,
                                              cv=cv_rsk, scoring='r2')
                 class_classifiers = False
                 current_model = search
             if current_name == 'sgdregressor':
                 search = HalvingGridSearchCV(current_model, HP_SGD_REGESSOR,
-                                             verbose=1, n_jobs=-1,  factor=2
+                                             verbose=1, n_jobs=-1, factor=2
                                              , cv=cv_rsk, scoring='r2')
                 current_model = search
                 class_classifiers = False
 
             if current_name == 'elasticnet':
                 search = HalvingGridSearchCV(current_model, HP_ELASTICNET,
-                                             verbose=1, n_jobs=-1,  factor=2
+                                             verbose=1, n_jobs=-1, factor=2
                                              , cv=cv_rsk, scoring='r2')
                 current_model = search
                 class_classifiers = False
             elif current_name in ['randomforestregressor', 'extratreesregressor']:
                 search = HalvingGridSearchCV(current_model, HP_TREES_REGRESSOR,
-                                             verbose=1, n_jobs=-1,  factor=2
+                                             verbose=1, n_jobs=-1, factor=2
                                              , cv=cv_rsk, scoring='r2')
                 current_model = search
                 class_classifiers = False
             elif current_name == 'lasso':
                 search = HalvingGridSearchCV(current_model, HP_LASSO,
-                                             verbose=1, n_jobs=-1,  factor=2
+                                             verbose=1, n_jobs=-1, factor=2
                                              , cv=cv_rsk, scoring='r2')
                 current_model = search
                 class_classifiers = False
             elif current_name == 'ridge':
                 search = HalvingGridSearchCV(current_model, HP_RIDGE,
-                                             verbose=1, n_jobs=-1,  factor=2
+                                             verbose=1, n_jobs=-1, factor=2
                                              , cv=cv_rsk, scoring='r2')
                 current_model = search
                 class_classifiers = False
             elif current_name == 'histgradientboostingregressor':
                 search = HalvingGridSearchCV(current_model, HP_HISTGRADBST_REGRESSOR,
-                                             verbose=1, n_jobs=-1,  factor=2
+                                             verbose=1, n_jobs=-1, factor=2
                                              , cv=cv_rsk, scoring='r2')
                 current_model = search
                 class_classifiers = False
             elif current_name.__contains__('svr'):
                 search = HalvingGridSearchCV(current_model, HP_SVR,
-                                             verbose=1, n_jobs=-1,  factor=2
+                                             verbose=1, n_jobs=-1, factor=2
                                              , cv=cv_rsk, scoring='r2')
                 current_model = search
                 class_classifiers = False
 
             elif current_name.__contains__('nusvc'):
                 search = HalvingGridSearchCV(current_model, HP_NUSVC,
-                                             verbose=1, n_jobs=-1,  factor=2
+                                             verbose=1, n_jobs=-1, factor=2
                                              , cv=cv_rsk, scoring='accuracy')
                 class_classifiers = True
                 current_model = search
             elif current_name.__contains__('linearsvc'):
                 search = HalvingGridSearchCV(current_model, HP_LINEAR_SVC,
-                                             verbose=1, n_jobs=-1,  factor=2
+                                             verbose=1, n_jobs=-1, factor=2
                                              , cv=cv_rsk, scoring='accuracy')
                 class_classifiers = True
                 current_model = search
             elif current_name == 'svc':
                 search = HalvingGridSearchCV(current_model, HP_SVC,
-                                             verbose=1, n_jobs=-1,  factor=2
+                                             verbose=1, n_jobs=-1, factor=2
                                              , cv=cv_rsk, scoring='accuracy')
                 class_classifiers = True
                 current_model = search
 
             elif current_name == 'ridgeclassifier':
                 search = HalvingGridSearchCV(current_model, HP_RIDGE_CLASSIFIER,
-                                             verbose=1, n_jobs=-1,  factor=2
+                                             verbose=1, n_jobs=-1, factor=2
                                              , cv=cv_rsk, scoring='accuracy')
                 class_classifiers = True
                 current_model = search
 
             elif current_name == 'logisticregression':
                 search = HalvingGridSearchCV(current_model, HP_LOGSTIC_REGRESSION,
-                                             verbose=1, n_jobs=-1,  factor=2
+                                             verbose=1, n_jobs=-1, factor=2
                                              , cv=cv_rsk, scoring='accuracy')
                 class_classifiers = True
                 current_model = search
             elif current_name == 'decisiontreeregressor':
                 search = HalvingGridSearchCV(current_model, HP_DECISIONTREE_REGRESSOR,
-                                             verbose=1, n_jobs=-1,  factor=2
+                                             verbose=1, n_jobs=-1, factor=2
                                              , cv=cv_rsk, scoring='r2')
                 current_model = search
                 class_classifiers = False
             elif current_name == 'xgbregressor':
                 search = HalvingGridSearchCV(current_model, HP_XGBOOST_REGRESSOR,
-                                             verbose=1, n_jobs=-1,  factor=2
+                                             verbose=1, n_jobs=-1, factor=2
                                              , cv=cv_rsk, scoring='r2')
                 current_model = search
                 class_classifiers = False
             elif current_name == 'bernoullinb' or current_name == 'mutlinomialnb':
                 search = HalvingGridSearchCV(current_model, HP_NAIVE_BAYES,
-                                             verbose=1, n_jobs=-1,  factor=2
+                                             verbose=1, n_jobs=-1, factor=2
                                              , cv=cv_rsk, scoring='r2')
                 current_model = search
                 class_classifiers = False
             elif current_name == 'gaussiannb':
                 search = HalvingGridSearchCV(current_model, HP_NAIVE_GAUSSIAN,
-                                             verbose=1, n_jobs=-1,  factor=2
+                                             verbose=1, n_jobs=-1, factor=2
                                              , cv=cv_rsk, scoring='r2')
                 current_model = search
                 class_classifiers = False
 
             elif current_name in ['randomforestclassifier', 'decisiontreeclassifier', 'extratreesclassifier']:
                 search = HalvingGridSearchCV(current_model, HP_FOREST_CLASSIFIERS,
-                                             verbose=1, n_jobs=-1,  factor=2,
+                                             verbose=1, n_jobs=-1, factor=2,
                                              cv=cv_rsk, scoring='accuracy')
                 class_classifiers = True
                 current_model = search
 
             elif current_name.__contains__('adaboostclassifier'):
                 search = HalvingGridSearchCV(current_model, HP_ADABOOST_CLASSIFIER,
-                                             verbose=1, n_jobs=-1,  factor=2,
+                                             verbose=1, n_jobs=-1, factor=2,
                                              cv=cv_rsk, scoring='accuracy')
                 class_classifiers = True
                 current_model = search
 
             elif current_name.__contains__('adaboostregressor'):
                 search = HalvingGridSearchCV(current_model, HP_ADABOOST_REGRESSOR,
-                                             verbose=1, n_jobs=-1,  factor=2,
+                                             verbose=1, n_jobs=-1, factor=2,
                                              cv=cv_rsk, scoring='r2')
                 current_model = search
                 class_classifiers = False
 
             elif current_name.__contains__('mlpclassifier'):
                 search = HalvingGridSearchCV(current_model, HP_MLP,
-                                             verbose=1, n_jobs=-1,  factor=2,
+                                             verbose=1, n_jobs=-1, factor=2,
                                              cv=cv_rsk, scoring='accuracy')
                 class_classifiers = True
                 current_model = search
 
             elif current_name.__contains__('gaussianprocessclassifier'):
                 search = HalvingGridSearchCV(current_model, HP_GAUSSIAN_BOOST_CLASSIFIER,
-                                             verbose=1, n_jobs=-1,  factor=2,
+                                             verbose=1, n_jobs=-1, factor=2,
                                              cv=cv_rsk, scoring='accuracy', aggressive_elimination=True)
                 class_classifiers = True
                 current_model = search
 
             elif current_name.__contains__('gradientboostingclassifier'):
                 search = HalvingGridSearchCV(current_model, HP_GRAD_CLASSIFIER,
-                                             verbose=1, n_jobs=-1,  factor=2,
+                                             verbose=1, n_jobs=-1, factor=2,
                                              cv=cv_rsk, scoring='accuracy', aggressive_elimination=True)
                 class_classifiers = True
                 current_model = search
@@ -253,47 +265,51 @@ def ai_learn_v2(db_provider, appframe, features=None, models_class=AI_MODELS.AI_
             elif current_name.__contains__("baggingregressor"):
                 search = HalvingGridSearchCV(current_model, HP_BAGGING_REGRESSOR,
                                              verbose=1, n_jobs=-1,
-                                             cv=cv_rsk,  factor=2, scoring='r2')
+                                             cv=cv_rsk, factor=2, scoring='r2')
                 current_model = search
                 class_classifiers = False
             elif current_name.__contains__("linearregression"):
                 search = HalvingGridSearchCV(current_model, HP_LINEAR_REGRESSION,
                                              verbose=1, n_jobs=-1,
-                                             cv=cv_rsk,  factor=2, scoring="r2")
+                                             cv=cv_rsk, factor=2, scoring="r2")
                 current_model = search
                 class_classifiers = False
             elif current_name.__contains__("passiveaggressiveclassifier"):
                 search = HalvingGridSearchCV(current_model, HP_PASSIVE_AGGRESSIVE_CLASSIFIER,
                                              verbose=1, n_jobs=-1,
-                                             cv=cv_rsk,  factor=2, scoring="accuracy")
+                                             cv=cv_rsk, factor=2, scoring="accuracy")
                 class_classifiers = True
                 current_model = search
 
             elif current_name.__contains__("logisticregressioncv"):
                 search = HalvingGridSearchCV(current_model, HP_LOGISTICREGRESSIONCV,
                                              verbose=1, n_jobs=-1,
-                                             cv=cv_rsk,  factor=2, scoring="accuracy")
+                                             cv=cv_rsk, factor=2, scoring="accuracy")
                 class_classifiers = True
                 current_model = search
 
             elif current_name.__contains__("catboostclassifier"):
                 search = HalvingGridSearchCV(current_model, HP_CATBOOST_CLASSIFIER,
                                              verbose=1, n_jobs=-1,
-                                             cv=cv_rsk,  factor=2, scoring="accuracy")
+                                             cv=cv_rsk, factor=2, scoring="accuracy")
                 class_classifiers = True
                 current_model = search
             elif current_name.__contains__("catboostregressor"):
                 search = HalvingGridSearchCV(current_model, HP_CATBOOST_CLASSIFIER,
                                              verbose=1, n_jobs=-1,
-                                             cv=cv_rsk,  factor=2, scoring="r2")
+                                             cv=cv_rsk, factor=2, scoring="r2")
                 class_classifiers = False
                 current_model = search
 
             for item in scalers:
                 asyncio.run(write_log(message=f'Model {current_name}\n scaler:{item.__str__()} '
                                               f'started learning at:{dt.datetime.now()}', severity=SEVERITY.INFO))
-                X_train_scaled = item.fit_transform(X_train)
-                X_test_scaled = item.fit_transform(X_test)
+                if item is None:
+                    X_train_scaled=X_train
+                    X_test_scaled=X_test
+                else:
+                    X_train_scaled = item.fit_transform(X_train)
+                    X_test_scaled = item.fit_transform(X_test)
                 current_model.fit(X_train_scaled, Y_train)
                 result = current_model.predict(X_test_scaled)
                 if class_classifiers:
@@ -311,21 +327,25 @@ def ai_learn_v2(db_provider, appframe, features=None, models_class=AI_MODELS.AI_
                 asyncio.run(
                     write_log(message=f"Model:{modelname}\n scaler={item.__str__()}", severity=SEVERITY.INFO))
                 asyncio.run(write_log(message=f"Good(>0.8):Medium(>0.6)"
-                                          f" {estimation_accuracy}", severity=SEVERITY.INFO))
+                                              f" {estimation_accuracy}", severity=SEVERITY.INFO))
                 if models_class == AI_MODELS.AI_CLASSIFIERS:
                     if best_model is None:
                         best_model = current_model
                         last_estimation = estimation_accuracy
+                        best_scaler=item
                     elif estimation_accuracy > last_estimation:
                         best_model = current_model
                         last_estimation = estimation_accuracy
+                        best_scaler = item
                 else:
                     if best_model is None:
                         best_model = current_model
                         last_estimation = estimation_accuracy
+                        best_scaler = item
                     elif estimation_accuracy > last_estimation:
                         best_model = current_model
                         last_estimation = estimation_accuracy
+                        best_scaler = item
         gc.collect()
     asyncio.run(write_log(message=print(models_results), severity=SEVERITY.INFO))
     name = str(best_model.best_estimator_).split('(')[0]
@@ -333,9 +353,14 @@ def ai_learn_v2(db_provider, appframe, features=None, models_class=AI_MODELS.AI_
         joblib.dump(best_model, f'{MODEL_STORE}{name}_aimodel.gzip', compress=3)
         with open(f"{MODEL_STORE}{name}_score.txt", "w+") as file:
             file.writelines(f"score:{last_estimation}")
-        with open(f"{MODEL_STORE}{name}_parameters.json", "w+") as file:
+        with open(f"{MODEL_STORE}{name}_model_parameters.json", "w+") as file:
             json.dump(best_model.best_params_, file)
-    #       with open(f'{MODEL_STORE}label_encoder{models_class.value}.pickle', 'wb') as file:
-    #           pickle.dump(label_encoder, file, pickle.HIGHEST_PROTOCOL)
+        parameters=dict()
+        parameters['scaler']=best_scaler.__str__()
+        parameters['labels']="None" if labels is None else labels
+        parameters['boundaries']="None" if boundaries is None else boundaries
+        parameters['multiclass']=is_multiclass
+        with open(f"{MODEL_STORE}{name}_preset_parameters.json", "w+") as file:
+            json.dump(parameters,file)
     except Exception as ex:
         asyncio.run(write_log(message=f'{ex}  at:{dt.datetime.now()}', severity=SEVERITY.ERROR))
