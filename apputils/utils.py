@@ -134,6 +134,6 @@ def storage_init():
 
 def multiclass_binning(frame, col_name):
     binned = 'estimated'
-    labels = [-2,-1, 0, 1,2]
-    frame[binned], boundaries = pd.qcut(frame[col_name], q=5, precision=1, retbins=True,labels=labels)
+    labels = [-3,-2,-1, 0, 1,2,3]
+    frame[binned], boundaries = pd.qcut(frame[col_name], q=7, precision=1, retbins=True,labels=labels)
     return frame,boundaries,labels

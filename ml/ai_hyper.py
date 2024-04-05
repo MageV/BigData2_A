@@ -41,7 +41,7 @@ HP_SVC = {
     'kernel': ['poly', 'linear', 'rbf']
 }
 
-HP_LOGSTIC_REGRESSION = {
+HP_LOGISTIC_REGRESSION_BINARY = {
     'penalty': ['l2','l1', 'elasticnet'],
     'solver': ['saga', 'sag', 'liblinear', 'newton-cg', 'newton-cholesky'],
     #    'multi_class': ['multinomial','ovr'],
@@ -51,6 +51,19 @@ HP_LOGSTIC_REGRESSION = {
     'max_iter':range(100,1000,10)
 
 }
+
+HP_LOGISTIC_REGRESSION_MULTY = {
+    'penalty': ['l2','l1', 'elasticnet'],
+    'solver': ['saga', 'sag', 'liblinear', 'newton-cg', 'newton-cholesky'],
+    #    'multi_class': ['multinomial','ovr'],
+    'C': [0.001, 0.01, 0.05, 0.07, 0.1, 0.5, 0.7, 0.75, 0.9, 1.0],
+    'tol':(0.000001,0.0001,0.001,0.01,0.1,0.9),
+    'fit_intercept':(True,False),
+    'max_iter':range(100,1000,10),
+    "multi_class":["multinomial"]
+
+}
+
 
 HP_DECISIONTREE_REGRESSOR = {
     'max_features': ['log2', 'sqrt'],
@@ -136,13 +149,22 @@ HP_PASSIVE_AGGRESSIVE_CLASSIFIER = {
     "max_iter": range(1000, 2000, 5),
 }
 
-HP_LOGISTICREGRESSIONCV = {
+HP_LOGISTICREGRESSIONCV_BINARY = {
     "Cs": range(1, 100,5),
     "fit_intercept": (True, False),
     "penalty": ("l1", "l2", "elasticnet"),
     "solver": ("lbfgs", "liblinear", "newton-cg", "newton-cholesky", "sag", "saga"),
     "refit": (True, False),
 }
+HP_LOGISTICREGRESSIONCV_MULTI = {
+    "Cs": range(1, 100,5),
+    "fit_intercept": (True, False),
+    "penalty": ("l1", "l2", "elasticnet"),
+    "solver": ("lbfgs", "liblinear", "newton-cg", "newton-cholesky", "sag", "saga"),
+    "refit": (True, False),
+    "multi_class":["multinomial"]
+}
+
 
 HP_CATBOOST_CLASSIFIER = {
     "iterations": range(10, 100, 10),
@@ -161,14 +183,23 @@ HP_NUSVC={
     "decision_function":('ovo','ovr'),
     "nu":[0.99,0.999,0.9999,1.0]
 }
-HP_LINEAR_SVC={
+HP_LINEAR_SVC_BINARY={
     "penalty":("l1","l2"),
     "loss":("hinge","squared_hinge"),
     "C":np.round(np.arange(0.1,5.0,0.1)),
-    "multi_class":("ovr","crammer_singer"),
+    "multi_class":["ovr"],
     "fit_intercept":(True,False),
     "max_iter":range(1000,2000,100)
 }
+HP_LINEAR_SVC_MULTI={
+    "penalty":("l1","l2"),
+    "loss":("hinge","squared_hinge"),
+    "C":np.round(np.arange(0.1,5.0,0.1)),
+    "multi_class":["crammer_singer"],
+    "fit_intercept":(True,False),
+    "max_iter":range(1000,2000,100)
+}
+
 
 HP_RIDGE_CLASSIFIER={
     "alpha":np.arange(1.0,10.0,0.2),

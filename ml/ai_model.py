@@ -28,7 +28,7 @@ from providers.db_clickhouse import *
 from providers.df import df_clean_for_ai
 
 
-def ai_clean(db_provider, appframe, msp_type: MSP_CLASS=MSP_CLASS.MSP_UL,is_multiclass=False):
+def ai_clean(db_provider, appframe, msp_type: MSP_CLASS = MSP_CLASS.MSP_UL, is_multiclass=False):
     if not is_multiclass:
         raw_data = appframe.loc[appframe['typeface'] == msp_type.value]
         raw_data = df_clean_for_ai(raw_data, db_provider, msp_type)
@@ -36,27 +36,27 @@ def ai_clean(db_provider, appframe, msp_type: MSP_CLASS=MSP_CLASS.MSP_UL,is_mult
     # raw_data["facetype"] = msp_type.value
     else:
         #raw_data = appframe.loc[appframe['typeface'] == msp_type.value]
-        raw_data,boundaries,labels=multiclass_binning(appframe,'sworkers')
+        raw_data, boundaries, labels = multiclass_binning(appframe, 'sworkers')
         raw_data.drop(['date_reg', 'sworkers'], axis=1, inplace=True)
-        return raw_data,boundaries,labels
+        return raw_data, boundaries, labels
 
 
-def ai_learn_v2(db_provider, appframe, features=None, models_class=AI_MODELS.AI_REGRESSORS,is_multiclass=False):
+def ai_learn_v2(db_provider, appframe, features=None, models_class=AI_MODELS.AI_REGRESSORS, is_multiclass=False):
     if features is None:
         features = ['*']
     best_model = None
-    boundaries=None
-    labels=None
-    best_scaler=None
+    boundaries = None
+    labels = None
+    best_scaler = None
     models_results = {}
     if not is_multiclass:
-        raw_data_1 = ai_clean(db_provider, appframe, MSP_CLASS.MSP_UL,is_multiclass)
+        raw_data_1 = ai_clean(db_provider, appframe, MSP_CLASS.MSP_UL, is_multiclass)
         raw_data_1.dropna(inplace=True)
-        raw_data_2 = ai_clean(db_provider, appframe, MSP_CLASS.MSP_FL,is_multiclass)
+        raw_data_2 = ai_clean(db_provider, appframe, MSP_CLASS.MSP_FL, is_multiclass)
         raw_data_2.dropna(inplace=True)
         raw_data = pd.concat([raw_data_1, raw_data_2], axis=0, ignore_index=True)
     else:
-        raw_data,boundaries,labels = ai_clean(db_provider, appframe,is_multiclass=is_multiclass)
+        raw_data, boundaries, labels = ai_clean(db_provider, appframe, is_multiclass=is_multiclass)
         raw_data.dropna(inplace=True)
     #raw_data=raw_data.dropna(inplace=True)
     # построение исходных данных модели
@@ -77,22 +77,21 @@ def ai_learn_v2(db_provider, appframe, features=None, models_class=AI_MODELS.AI_
                                                             shuffle=True, random_state=42, stratify=df_Y)
 
         class_classifiers = False
-        scalers = [None,SplineTransformer(degree=3, n_knots=6), StandardScaler(copy=True), MinMaxScaler(copy=True),
+        scalers = [None, SplineTransformer(degree=3, n_knots=6), StandardScaler(copy=True), MinMaxScaler(copy=True),
                    RobustScaler(copy=True), PowerTransformer(method='yeo-johnson', standardize=True, copy=True),
                    QuantileTransformer(copy=True), ]
         models_beyes = [GaussianNB(), BernoulliNB()]
         aSVR = [SVR(), NuSVR(), LinearSVR(), ]
         net_models = [ElasticNetCV(), ElasticNet(), ]
-        models_regressor = [RandomForestRegressor(), DecisionTreeRegressor(), ExtraTreesRegressor(),
-                            SGDRegressor(), CatBoostRegressor(),LinearRegression(),
-                            AdaBoostRegressor(),Lasso(), Ridge(),]
-        models_classifiers = [RandomForestClassifier(),
-                              DecisionTreeClassifier(), ExtraTreesClassifier(), CatBoostClassifier(), SVC(),
-                              LinearSVC(),RidgeClassifier(), LogisticRegression(), LogisticRegressionCV(),
-                              MLPClassifier(), AdaBoostClassifier(),PassiveAggressiveClassifier(),]
+        models_regressor = [ LinearRegression(),
+                            AdaBoostRegressor(), Lasso(), Ridge(), RandomForestRegressor(), DecisionTreeRegressor(),
+                            ExtraTreesRegressor(), SGDRegressor(), ] #CatBoostRegressor(),
+        models_classifiers = [ LogisticRegression(), LogisticRegressionCV(),RandomForestClassifier(),
+                              DecisionTreeClassifier(), ExtraTreesClassifier(), SVC(),
+                              LinearSVC(), RidgeClassifier(),
+                              MLPClassifier(), AdaBoostClassifier(), PassiveAggressiveClassifier()]#CatBoostClassifier(),
         # NO MEMORY FOR
-        experimental_models = [GradientBoostingClassifier(), GaussianProcessClassifier(),
-                               HistGradientBoostingRegressor()]
+        experimental_models = [GaussianProcessClassifier()]#[GradientBoostingClassifier(), HistGradientBoostingRegressor()]
         last_estimation = 0
         if models_class == AI_MODELS.AI_REGRESSORS:
             models = models_regressor
@@ -101,7 +100,7 @@ def ai_learn_v2(db_provider, appframe, features=None, models_class=AI_MODELS.AI_
         #        elif models_class == AI_MODELS.AI_ML:
         #            models = models_ML
         elif models_class == AI_MODELS.AI_ALL:
-            models =  models_regressor+net_models+models_classifiers + models_beyes   #+ experimental_models  #
+            models = models_classifiers + models_regressor + net_models + models_beyes + experimental_models  #
         elif models_class == AI_MODELS.AI_CLASSIFIERS:
             models = models_classifiers
         elif models_class == AI_MODELS.AI_EXPERIMENTAL:
@@ -170,7 +169,8 @@ def ai_learn_v2(db_provider, appframe, features=None, models_class=AI_MODELS.AI_
                 class_classifiers = True
                 current_model = search
             elif current_name.__contains__('linearsvc'):
-                search = HalvingGridSearchCV(current_model, HP_LINEAR_SVC,
+                hyperset=HP_LINEAR_SVC_BINARY if not is_multiclass else HP_LINEAR_SVC_MULTI
+                search = HalvingGridSearchCV(current_model, hyperset,
                                              verbose=1, n_jobs=-1, factor=2
                                              , cv=cv_rsk, scoring='accuracy')
                 class_classifiers = True
@@ -190,7 +190,8 @@ def ai_learn_v2(db_provider, appframe, features=None, models_class=AI_MODELS.AI_
                 current_model = search
 
             elif current_name == 'logisticregression':
-                search = HalvingGridSearchCV(current_model, HP_LOGSTIC_REGRESSION,
+                hyperset=HP_LOGISTIC_REGRESSION_MULTY if not is_multiclass else HP_LOGISTIC_REGRESSION_BINARY
+                search = HalvingGridSearchCV(current_model, hyperset,
                                              verbose=1, n_jobs=-1, factor=2
                                              , cv=cv_rsk, scoring='accuracy')
                 class_classifiers = True
@@ -282,7 +283,8 @@ def ai_learn_v2(db_provider, appframe, features=None, models_class=AI_MODELS.AI_
                 current_model = search
 
             elif current_name.__contains__("logisticregressioncv"):
-                search = HalvingGridSearchCV(current_model, HP_LOGISTICREGRESSIONCV,
+                hyperset=HP_LOGISTICREGRESSIONCV_MULTI if is_multiclass else HP_LOGISTICREGRESSIONCV_BINARY
+                search = HalvingGridSearchCV(current_model, hyperset,
                                              verbose=1, n_jobs=-1,
                                              cv=cv_rsk, factor=2, scoring="accuracy")
                 class_classifiers = True
@@ -304,9 +306,11 @@ def ai_learn_v2(db_provider, appframe, features=None, models_class=AI_MODELS.AI_
             for item in scalers:
                 asyncio.run(write_log(message=f'Model {current_name}\n scaler:{item.__str__()} '
                                               f'started learning at:{dt.datetime.now()}', severity=SEVERITY.INFO))
-                if item is None:
-                    X_train_scaled=X_train
-                    X_test_scaled=X_test
+                if current_name.__contains__("catboost") and item is None:
+                    continue
+                elif item is None:
+                    X_train_scaled = X_train
+                    X_test_scaled = X_test
                 else:
                     X_train_scaled = item.fit_transform(X_train)
                     X_test_scaled = item.fit_transform(X_test)
@@ -332,7 +336,7 @@ def ai_learn_v2(db_provider, appframe, features=None, models_class=AI_MODELS.AI_
                     if best_model is None:
                         best_model = current_model
                         last_estimation = estimation_accuracy
-                        best_scaler=item
+                        best_scaler = item
                     elif estimation_accuracy > last_estimation:
                         best_model = current_model
                         last_estimation = estimation_accuracy
@@ -355,12 +359,12 @@ def ai_learn_v2(db_provider, appframe, features=None, models_class=AI_MODELS.AI_
             file.writelines(f"score:{last_estimation}")
         with open(f"{MODEL_STORE}{name}_model_parameters.json", "w+") as file:
             json.dump(best_model.best_params_, file)
-        parameters=dict()
-        parameters['scaler']=best_scaler.__str__()
-        parameters['labels']="None" if labels is None else labels
-        parameters['boundaries']="None" if boundaries is None else boundaries
-        parameters['multiclass']=is_multiclass
+        parameters = dict()
+        parameters['scaler'] = best_scaler.__str__()
+        parameters['labels'] = "None" if labels is None else labels
+        parameters['boundaries'] = "None" if boundaries is None else boundaries
+        parameters['multiclass'] = is_multiclass
         with open(f"{MODEL_STORE}{name}_preset_parameters.json", "w+") as file:
-            json.dump(parameters,file)
+            json.dump(parameters, file)
     except Exception as ex:
         asyncio.run(write_log(message=f'{ex}  at:{dt.datetime.now()}', severity=SEVERITY.ERROR))
