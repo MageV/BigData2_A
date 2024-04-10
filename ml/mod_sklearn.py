@@ -4,44 +4,27 @@ import multiprocessing
 import joblib
 from sklearnex import patch_sklearn
 patch_sklearn()
-from catboost import CatBoostClassifier, CatBoostRegressor
 from joblib import parallel_backend
 from sklearn import metrics
-from sklearn.experimental import enable_halving_search_cv
 from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor, RandomForestClassifier, ExtraTreesClassifier, \
-    AdaBoostClassifier, AdaBoostRegressor, GradientBoostingClassifier, IsolationForest
+    AdaBoostClassifier, AdaBoostRegressor, IsolationForest
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.linear_model import Lasso, Ridge, LogisticRegression, ElasticNet, ElasticNetCV, SGDRegressor, \
     PassiveAggressiveClassifier, LinearRegression, LogisticRegressionCV, RidgeClassifier, HuberRegressor, \
-    TweedieRegressor, PoissonRegressor, RANSACRegressor, TheilSenRegressor
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, classification_report
+    Perceptron
+from sklearn.metrics import confusion_matrix, classification_report
+from sklearn.experimental import enable_halving_search_cv
 from sklearn.model_selection import train_test_split, HalvingGridSearchCV
 from sklearn.naive_bayes import GaussianNB, BernoulliNB
 from sklearn.neural_network import MLPClassifier
-from sklearn.preprocessing import RobustScaler, LabelEncoder, StandardScaler, MinMaxScaler, QuantileTransformer, \
+from sklearn.preprocessing import RobustScaler, StandardScaler, MinMaxScaler, QuantileTransformer, \
     PowerTransformer, SplineTransformer
-from sklearn.svm import SVR, NuSVR, LinearSVR, SVC, NuSVC, LinearSVC
+from sklearn.svm import SVR, NuSVR, LinearSVR, SVC, LinearSVC
 from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
-from sklearn.ensemble import HistGradientBoostingRegressor
 
-from apputils.utils import multiclass_binning
 from ml.ai_hyper import *
 from providers.db_clickhouse import *
-from providers.df import df_clean_for_ai
-
-
-def ai_clean(db_provider, appframe, msp_type: MSP_CLASS = MSP_CLASS.MSP_UL, is_multiclass=False, istf=False):
-    if not is_multiclass:
-        raw_data = appframe.loc[appframe['typeface'] == msp_type.value]
-        raw_data = df_clean_for_ai(raw_data, db_provider, msp_type)
-        raw_data.drop(['date_reg', 'sworkers'], axis=1, inplace=True)
-        return raw_data
-    # raw_data["facetype"] = msp_type.value
-    else:
-        #raw_data = appframe.loc[appframe['typeface'] == msp_type.value]
-        raw_data, boundaries, labels = multiclass_binning(appframe, 'sworkers')
-        raw_data.drop(['date_reg', 'sworkers'], axis=1, inplace=True)
-        return raw_data, boundaries, labels
+from providers.df import df_clean
 
 
 def sk_learn_model(db_provider, appframe, features=None, models_class=AI_MODELS.AI_REGRESSORS, is_multiclass=False):
@@ -53,13 +36,13 @@ def sk_learn_model(db_provider, appframe, features=None, models_class=AI_MODELS.
     best_scaler = None
     models_results = {}
     if not is_multiclass:
-        raw_data_1 = ai_clean(db_provider, appframe, MSP_CLASS.MSP_UL, is_multiclass)
+        raw_data_1 = df_clean(db_provider, appframe, MSP_CLASS.MSP_UL, is_multiclass)
         raw_data_1.dropna(inplace=True)
-        raw_data_2 = ai_clean(db_provider, appframe, MSP_CLASS.MSP_FL, is_multiclass)
+        raw_data_2 = df_clean(db_provider, appframe, MSP_CLASS.MSP_FL, is_multiclass)
         raw_data_2.dropna(inplace=True)
         raw_data = pd.concat([raw_data_1, raw_data_2], axis=0, ignore_index=True)
     else:
-        raw_data, boundaries, labels = ai_clean(db_provider, appframe, is_multiclass=is_multiclass)
+        raw_data, boundaries, labels = df_clean(db_provider, appframe, is_multiclass=is_multiclass)
         raw_data.dropna(inplace=True)
     #raw_data=raw_data.dropna(inplace=True)
     # построение исходных данных модели
@@ -86,10 +69,9 @@ def sk_learn_model(db_provider, appframe, features=None, models_class=AI_MODELS.
         net_models = [ElasticNetCV(), ElasticNet(), ]
         models_regressor = [HuberRegressor(),
                             RandomForestRegressor(), DecisionTreeRegressor(), ExtraTreesRegressor(), SVR(),
-                            LinearRegression(), AdaBoostRegressor(),HistGradientBoostingRegressor(),
-                            SGDRegressor(),  Lasso(), Ridge()]
-        #CatBoostRegressor(), PoissonRegressor(),TweedieRegressor(), RANSACRegressor(),
-        models_classifiers = [RandomForestClassifier(),
+                            LinearRegression(), AdaBoostRegressor(), SGDRegressor(),  Lasso(), Ridge()]
+        #CatBoostRegressor(), PoissonRegressor(),TweedieRegressor(), RANSACRegressor(),HistGradientBoostingRegressor()
+        models_classifiers = [Perceptron(),RandomForestClassifier(),
                               DecisionTreeClassifier(), ExtraTreesClassifier(), LogisticRegression(),
                               LogisticRegressionCV(),SVC(),
                               LinearSVC(), RidgeClassifier(),IsolationForest(),
@@ -194,6 +176,15 @@ def sk_learn_model(db_provider, appframe, features=None, models_class=AI_MODELS.
                                              , cv=cv_rsk, scoring='accuracy')
                 class_classifiers = True
                 current_model = search
+
+            elif current_name.__contains__('perceptron'):
+                search = HalvingGridSearchCV(current_model, HP_PERCEPTRON,
+                                             verbose=1, n_jobs=-1, factor=2
+                                             , cv=cv_rsk, scoring='accuracy')
+                class_classifiers = True
+                current_model = search
+
+
             elif current_name.__contains__('linearsvc'):
                 hyperset = HP_LINEAR_SVC_BINARY if not is_multiclass else HP_LINEAR_SVC_MULTI
                 search = HalvingGridSearchCV(current_model, hyperset,

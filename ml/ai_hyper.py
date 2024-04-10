@@ -133,9 +133,9 @@ HP_SGD_REGESSOR = {
     'loss': ('squared_error', 'huber', 'epslion_insensitive', 'squared_epsilon_insensitive'),
     'penalty': ('l2', 'l1', 'elasticnet'),
     'max_iter': range(1000, 2000, 5),
-    'learning_rate': ('optimal', 'constant', 'invscaling','adaptive'),
+    'learning_rate': ('optimal', 'constant', 'invscaling', 'adaptive'),
     "tol": (0.0001, 0.001, 0.005, 0.01, 0.1),
-    "epsilon":(0.001,0.01,0.05,0.1,0.5,0.9)
+    "epsilon": (0.001, 0.01, 0.05, 0.1, 0.5, 0.9)
 }
 
 HP_BAGGING_REGRESSOR = {
@@ -237,8 +237,15 @@ HP_RANSAC_REGRESSOR = {
     "stop_probability": np.arange(0.1, 0.99, 0.1),
     "loss": ('absolute_error', 'squared_error')
 }
-HP_THEIL_SEN_REGRESSOR={
+HP_THEIL_SEN_REGRESSOR = {
     "fit_intercept": (True, False),
     "tol": (0.0001, 0.001, 0.005, 0.01, 0.1),
 }
 
+HP_PERCEPTRON = {
+    "penalty": ('l2', 'l1', 'elasticnet'),
+    "alpha": [0, 0.0001, 0.001, 0.01, 0.1, 0.9, 1],
+    "fit_intercept": (True, False),
+    "shuffle": (True, False),
+    "class_weight":["balanced"]
+}

@@ -9,6 +9,7 @@ from apputils.archivers import ArchiveManager
 from apputils.observers import ZipFileObserver
 from apputils.utils import loadxml, drop_zip, drop_xml, drop_csv, drop_xlsx
 from ml.mod_sklearn import sk_learn_model
+from ml.mod_tflow import tf_learn
 from providers.df import *
 from providers.web import WebScraper
 
@@ -122,6 +123,7 @@ if __name__ == '__main__':
         raw_data_total = pd.concat([raw_data, raw_data_2], axis=0, ignore_index=True)
         asyncio.run(write_log(message=f'Finish for app_rows:FL:{dt.datetime.now()}', severity=SEVERITY.INFO))
         gc.collect()
-        sk_learn_model(db_provider=dbprovider, appframe=raw_data_total, models_class=AI_MODELS.AI_REGRESSORS, is_multiclass=True)
-        #tf_learn(raw_data_total)
+        #sk_learn_model(db_provider=dbprovider, appframe=raw_data_total, models_class=AI_MODELS.AI_CLASSIFIERS,
+                       #is_multiclass=False)
+        tf_learn(raw_data_total,'date_reg', classified_by='sworkers', pct=0.33)
     asyncio.run(write_log(message=f'finished at:{dt.datetime.now()}', severity=SEVERITY.INFO))
