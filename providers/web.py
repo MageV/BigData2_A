@@ -10,11 +10,13 @@ import aiohttp
 import pandas as pd
 from bs4 import BeautifulSoup, SoupStrainer
 from zeep import Client, Settings
+import os
 
 from apputils.log import write_log
 from config.appconfig import *
 
 warnings.filterwarnings("ignore")
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 
 class WebScraper:
@@ -25,19 +27,16 @@ class WebScraper:
                           "Chrome/70.0.3538.110 Safari/537.36",
             "Accept-Encoding": "gzip, deflate",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
-            "Accept-Language": "en"
+            "Accept-Language": "en,ru"
         }
 
     async def __getHtml(self, url):
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=self.__headers) as resp:
-                #await session.close()
-                return await resp.text()
-
-
-
-
-
+                text = await resp.text()
+                resp.close()
+                await session.close()
+                return text
 
     def __parseHtml_FNS(self, html):
         soup = BeautifulSoup(html, features="lxml")
@@ -112,8 +111,6 @@ class WebScraper:
         return okato
         pass
 
-
-
     async def __import_sors_list(self):
         html = await self.__getHtml(URL_CBR_SORS)
         soup = BeautifulSoup(html, features="lxml").find_all("a", class_="versions_item")
@@ -124,14 +121,13 @@ class WebScraper:
         return list_cred
 
     async def __import_debt_list(self):
-        html=await self.__getHtml(URL_CBR_SORS)
+        html = await self.__getHtml(URL_CBR_SORS)
         soup = BeautifulSoup(html, features="lxml").find_all("a", class_="versions_item")
         list_debt = list()
         for item in soup:
             if item.attrs['href'].__contains__("Debt_sme_divisions"):
                 list_debt.append("https://cbr.ru" + item.attrs['href'])
         return list_debt
-
 
     def _load_xlsx_sors(self, name):
         frame = pd.read_excel(name, engine="openpyxl", header=list(range(6)))
@@ -189,7 +185,8 @@ class WebScraper:
                 except ValueError as ex:
                     break
         frame_result = frame_result[
-            (frame_result['region'].str.contains('ОКРУГ') == False) & (frame_result['region'].str[0] != ' ')&(frame_result['region'].str.contains('ФЕДЕРАЦИЯ') == False)]
+            (frame_result['region'].str.contains('ОКРУГ') == False) & (frame_result['region'].str[0] != ' ') & (
+                        frame_result['region'].str.contains('ФЕДЕРАЦИЯ') == False)]
         frame_result["okato_code"] = 0
         return frame_result
 
@@ -210,7 +207,8 @@ class WebScraper:
                 except ValueError as ex:
                     break
         frame_result = frame_result[
-            (frame_result['region'].str.contains('ОКРУГ') == False) & (frame_result['region'].str[0] != ' ')&(frame_result['region'].str.contains('ФЕДЕРАЦИЯ') == False)]
+            (frame_result['region'].str.contains('ОКРУГ') == False) & (frame_result['region'].str[0] != ' ') & (
+                        frame_result['region'].str.contains('ФЕДЕРАЦИЯ') == False)]
         frame_result["okato_code"] = 0
         return frame_result
 

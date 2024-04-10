@@ -2,16 +2,18 @@ import gc
 import json
 import multiprocessing
 import joblib
-import matplotlib.pyplot as plt
+from sklearnex import patch_sklearn
+patch_sklearn()
 from catboost import CatBoostClassifier, CatBoostRegressor
 from joblib import parallel_backend
 from sklearn import metrics
 from sklearn.experimental import enable_halving_search_cv
 from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor, RandomForestClassifier, ExtraTreesClassifier, \
-    AdaBoostClassifier, AdaBoostRegressor, GradientBoostingClassifier, BaggingRegressor
+    AdaBoostClassifier, AdaBoostRegressor, GradientBoostingClassifier, IsolationForest
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.linear_model import Lasso, Ridge, LogisticRegression, ElasticNet, ElasticNetCV, SGDRegressor, \
-    PassiveAggressiveClassifier, LinearRegression, LogisticRegressionCV, RidgeClassifier
+    PassiveAggressiveClassifier, LinearRegression, LogisticRegressionCV, RidgeClassifier, HuberRegressor, \
+    TweedieRegressor, PoissonRegressor, RANSACRegressor, TheilSenRegressor
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, classification_report
 from sklearn.model_selection import train_test_split, HalvingGridSearchCV
 from sklearn.naive_bayes import GaussianNB, BernoulliNB
@@ -28,10 +30,11 @@ from providers.db_clickhouse import *
 from providers.df import df_clean_for_ai
 
 
-def ai_clean(db_provider, appframe, msp_type: MSP_CLASS = MSP_CLASS.MSP_UL, is_multiclass=False):
+def ai_clean(db_provider, appframe, msp_type: MSP_CLASS = MSP_CLASS.MSP_UL, is_multiclass=False, istf=False):
     if not is_multiclass:
         raw_data = appframe.loc[appframe['typeface'] == msp_type.value]
         raw_data = df_clean_for_ai(raw_data, db_provider, msp_type)
+        raw_data.drop(['date_reg', 'sworkers'], axis=1, inplace=True)
         return raw_data
     # raw_data["facetype"] = msp_type.value
     else:
@@ -41,7 +44,7 @@ def ai_clean(db_provider, appframe, msp_type: MSP_CLASS = MSP_CLASS.MSP_UL, is_m
         return raw_data, boundaries, labels
 
 
-def ai_learn_v2(db_provider, appframe, features=None, models_class=AI_MODELS.AI_REGRESSORS, is_multiclass=False):
+def sk_learn_model(db_provider, appframe, features=None, models_class=AI_MODELS.AI_REGRESSORS, is_multiclass=False):
     if features is None:
         features = ['*']
     best_model = None
@@ -66,32 +69,34 @@ def ai_learn_v2(db_provider, appframe, features=None, models_class=AI_MODELS.AI_
     else:
         criteria_list = frame_cols
     pre_work_data = raw_data[criteria_list]
-    # label_encoder = LabelEncoder()
-    # pre_work_data.loc[:, 'okved'] = label_encoder.fit_transform(pre_work_data.loc[:, 'okved'])
     df_X = pre_work_data.drop(['estimated'], axis=1)
     df_Y = pre_work_data['estimated'].values
     cv_rsk = 5
     # Расчет моделей и выбор наилучшей
     with (parallel_backend("multiprocessing", n_jobs=multiprocessing.cpu_count() - 2)):
-        X_train, X_test, Y_train, Y_test = train_test_split(df_X, df_Y, test_size=0.25,
+        X_train, X_test, Y_train, Y_test = train_test_split(df_X, df_Y, test_size=0.30,
                                                             shuffle=True, random_state=42, stratify=df_Y)
 
         class_classifiers = False
-        scalers = [None, SplineTransformer(degree=3, n_knots=6), StandardScaler(copy=True), MinMaxScaler(copy=True),
-                   RobustScaler(copy=True), PowerTransformer(method='yeo-johnson', standardize=True, copy=True),
-                   QuantileTransformer(copy=True), ]
+        scalers = [None, SplineTransformer(degree=4, n_knots=8), StandardScaler(), MinMaxScaler(),
+                   RobustScaler(), PowerTransformer(method='yeo-johnson', standardize=True),
+                   QuantileTransformer(), ]
         models_beyes = [GaussianNB(), BernoulliNB()]
         aSVR = [SVR(), NuSVR(), LinearSVR(), ]
         net_models = [ElasticNetCV(), ElasticNet(), ]
-        models_regressor = [ LinearRegression(),
-                            AdaBoostRegressor(), Lasso(), Ridge(), RandomForestRegressor(), DecisionTreeRegressor(),
-                            ExtraTreesRegressor(), SGDRegressor(), ] #CatBoostRegressor(),
-        models_classifiers = [ LogisticRegression(), LogisticRegressionCV(),RandomForestClassifier(),
-                              DecisionTreeClassifier(), ExtraTreesClassifier(), SVC(),
-                              LinearSVC(), RidgeClassifier(),
-                              MLPClassifier(), AdaBoostClassifier(), PassiveAggressiveClassifier()]#CatBoostClassifier(),
+        models_regressor = [HuberRegressor(),
+                            RandomForestRegressor(), DecisionTreeRegressor(), ExtraTreesRegressor(), SVR(),
+                            LinearRegression(), AdaBoostRegressor(),HistGradientBoostingRegressor(),
+                            SGDRegressor(),  Lasso(), Ridge()]
+        #CatBoostRegressor(), PoissonRegressor(),TweedieRegressor(), RANSACRegressor(),
+        models_classifiers = [RandomForestClassifier(),
+                              DecisionTreeClassifier(), ExtraTreesClassifier(), LogisticRegression(),
+                              LogisticRegressionCV(),SVC(),
+                              LinearSVC(), RidgeClassifier(),IsolationForest(),
+                              MLPClassifier(), AdaBoostClassifier(),
+                              PassiveAggressiveClassifier()]  #CatBoostClassifier(),
         # NO MEMORY FOR
-        experimental_models = [GaussianProcessClassifier()]#[GradientBoostingClassifier(), HistGradientBoostingRegressor()]
+        experimental_models = [GaussianProcessClassifier()]  #[GradientBoostingClassifier(), ]
         last_estimation = 0
         if models_class == AI_MODELS.AI_REGRESSORS:
             models = models_regressor
@@ -120,6 +125,27 @@ def ai_learn_v2(db_provider, appframe, features=None, models_class=AI_MODELS.AI_
                 current_model = search
             if current_name == 'sgdregressor':
                 search = HalvingGridSearchCV(current_model, HP_SGD_REGESSOR,
+                                             verbose=1, n_jobs=-1, factor=2
+                                             , cv=cv_rsk, scoring='r2')
+                current_model = search
+                class_classifiers = False
+
+            if current_name == 'tweedieregressor':
+                search = HalvingGridSearchCV(current_model, HP_TWEEDIE_REGRESSOR,
+                                             verbose=1, n_jobs=-1, factor=2
+                                             , cv=cv_rsk, scoring='r2')
+                current_model = search
+                class_classifiers = False
+
+            if current_name == 'ransacregressor':
+                search = HalvingGridSearchCV(current_model, HP_RANSAC_REGRESSOR,
+                                             verbose=1, n_jobs=-1, factor=2
+                                             , cv=cv_rsk, scoring='r2')
+                current_model = search
+                class_classifiers = False
+
+            if current_name == 'poissonregressor':
+                search = HalvingGridSearchCV(current_model, HP_POISSON_REGRESSOR,
                                              verbose=1, n_jobs=-1, factor=2
                                              , cv=cv_rsk, scoring='r2')
                 current_model = search
@@ -169,7 +195,7 @@ def ai_learn_v2(db_provider, appframe, features=None, models_class=AI_MODELS.AI_
                 class_classifiers = True
                 current_model = search
             elif current_name.__contains__('linearsvc'):
-                hyperset=HP_LINEAR_SVC_BINARY if not is_multiclass else HP_LINEAR_SVC_MULTI
+                hyperset = HP_LINEAR_SVC_BINARY if not is_multiclass else HP_LINEAR_SVC_MULTI
                 search = HalvingGridSearchCV(current_model, hyperset,
                                              verbose=1, n_jobs=-1, factor=2
                                              , cv=cv_rsk, scoring='accuracy')
@@ -190,7 +216,7 @@ def ai_learn_v2(db_provider, appframe, features=None, models_class=AI_MODELS.AI_
                 current_model = search
 
             elif current_name == 'logisticregression':
-                hyperset=HP_LOGISTIC_REGRESSION_MULTY if not is_multiclass else HP_LOGISTIC_REGRESSION_BINARY
+                hyperset = HP_LOGISTIC_REGRESSION_MULTY if not is_multiclass else HP_LOGISTIC_REGRESSION_BINARY
                 search = HalvingGridSearchCV(current_model, hyperset,
                                              verbose=1, n_jobs=-1, factor=2
                                              , cv=cv_rsk, scoring='accuracy')
@@ -263,6 +289,13 @@ def ai_learn_v2(db_provider, appframe, features=None, models_class=AI_MODELS.AI_
                 class_classifiers = True
                 current_model = search
 
+            elif current_name.__contains__('isolationforest'):
+                search = HalvingGridSearchCV(current_model, HP_ISOLATION_FOREST,
+                                             verbose=1, n_jobs=-1, factor=2,
+                                             cv=cv_rsk, scoring='accuracy', aggressive_elimination=True)
+                class_classifiers = True
+                current_model = search
+
             elif current_name.__contains__("baggingregressor"):
                 search = HalvingGridSearchCV(current_model, HP_BAGGING_REGRESSOR,
                                              verbose=1, n_jobs=-1,
@@ -283,7 +316,7 @@ def ai_learn_v2(db_provider, appframe, features=None, models_class=AI_MODELS.AI_
                 current_model = search
 
             elif current_name.__contains__("logisticregressioncv"):
-                hyperset=HP_LOGISTICREGRESSIONCV_MULTI if is_multiclass else HP_LOGISTICREGRESSIONCV_BINARY
+                hyperset = HP_LOGISTICREGRESSIONCV_MULTI if is_multiclass else HP_LOGISTICREGRESSIONCV_BINARY
                 search = HalvingGridSearchCV(current_model, hyperset,
                                              verbose=1, n_jobs=-1,
                                              cv=cv_rsk, factor=2, scoring="accuracy")
@@ -302,10 +335,16 @@ def ai_learn_v2(db_provider, appframe, features=None, models_class=AI_MODELS.AI_
                                              cv=cv_rsk, factor=2, scoring="r2")
                 class_classifiers = False
                 current_model = search
+            elif current_name.__contains__("huberregressor"):
+                search = HalvingGridSearchCV(current_model, HP_HUBER_REGRESSOR,
+                                             verbose=1, n_jobs=-1,
+                                             cv=cv_rsk, factor=2, scoring="r2")
+                class_classifiers = False
+                current_model = search
 
             for item in scalers:
                 asyncio.run(write_log(message=f'Model {current_name}\n scaler:{item.__str__()} '
-                                              f'started learning at:{dt.datetime.now()}', severity=SEVERITY.INFO))
+                                              f'\n started learning at:{dt.datetime.now()}', severity=SEVERITY.INFO))
                 if current_name.__contains__("catboost") and item is None:
                     continue
                 elif item is None:

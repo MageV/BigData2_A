@@ -1,16 +1,14 @@
 import gc
 import glob
 import multiprocessing
-from concurrent.futures import as_completed, ProcessPoolExecutor
 from multiprocessing import freeze_support
 import warnings
 
-import pandas as pd
 
 from apputils.archivers import ArchiveManager
 from apputils.observers import ZipFileObserver
 from apputils.utils import loadxml, drop_zip, drop_xml, drop_csv, drop_xlsx
-from ml.ai_model import ai_learn_v2
+from ml.mod_sklearn import sk_learn_model
 from providers.df import *
 from providers.web import WebScraper
 
@@ -99,7 +97,7 @@ if __name__ == '__main__':
         raw_data_total = pd.concat([raw_data, raw_data_2], axis=0, ignore_index=True)
         asyncio.run(write_log(message=f'Finish for app_rows:FL:{dt.datetime.now()}', severity=SEVERITY.INFO))
         gc.collect()
-        ai_learn_v2(db_provider=dbprovider, appframe=raw_data_total, models_class=AI_MODELS.AI_ALL)
+        sk_learn_model(db_provider=dbprovider, appframe=raw_data_total, models_class=AI_MODELS.AI_ALL)
     elif XML_FILE_DEBUG:
         #      archive_manager.extract(source=APP_FILE_DEBUG_NAME, dest=XML_STORE)
         files_csv = glob.glob(RESULT_STORE + '*.csv')
@@ -114,15 +112,16 @@ if __name__ == '__main__':
         sors = dbprovider.get_credit_info(PRE_TABLES.PT_SORS)
         debt = dbprovider.get_credit_info(PRE_TABLES.PT_DEBT)
         app = dbprovider.db_get_frames_by_facetype(ft=MSP_CLASS.MSP_UL.value)
-        asyncio.run(write_log(message=f'Start for UL:{dt.datetime.now()}', severity=SEVERITY.INFO))
+        asyncio.run(write_log(message=f'Merge DF for UL:{dt.datetime.now()}', severity=SEVERITY.INFO))
         raw_data = df_fill_credit_apps(typeface=MSP_CLASS.MSP_UL, sors_frame=sors, debt_frame=debt,
                                        app_frame=app, dates_frame=regdates)
         app = dbprovider.db_get_frames_by_facetype(ft=MSP_CLASS.MSP_FL.value)
-        asyncio.run(write_log(message=f'Start for FL:{dt.datetime.now()}', severity=SEVERITY.INFO))
+        asyncio.run(write_log(message=f'Merge DF for FL:{dt.datetime.now()}', severity=SEVERITY.INFO))
         raw_data_2 = df_fill_credit_apps(typeface=MSP_CLASS.MSP_FL, sors_frame=sors, debt_frame=debt,
                                          app_frame=app, dates_frame=regdates)
         raw_data_total = pd.concat([raw_data, raw_data_2], axis=0, ignore_index=True)
         asyncio.run(write_log(message=f'Finish for app_rows:FL:{dt.datetime.now()}', severity=SEVERITY.INFO))
         gc.collect()
-        ai_learn_v2(db_provider=dbprovider, appframe=raw_data_total, models_class=AI_MODELS.AI_ALL,is_multiclass=True)
+        sk_learn_model(db_provider=dbprovider, appframe=raw_data_total, models_class=AI_MODELS.AI_REGRESSORS, is_multiclass=True)
+        #tf_learn(raw_data_total)
     asyncio.run(write_log(message=f'finished at:{dt.datetime.now()}', severity=SEVERITY.INFO))
