@@ -3,6 +3,7 @@ import json
 import multiprocessing
 import joblib
 from sklearnex import patch_sklearn
+
 patch_sklearn()
 from joblib import parallel_backend
 from sklearn import metrics
@@ -69,12 +70,12 @@ def sk_learn_model(db_provider, appframe, features=None, models_class=AI_MODELS.
         net_models = [ElasticNetCV(), ElasticNet(), ]
         models_regressor = [HuberRegressor(),
                             RandomForestRegressor(), DecisionTreeRegressor(), ExtraTreesRegressor(), SVR(),
-                            LinearRegression(), AdaBoostRegressor(), SGDRegressor(),  Lasso(), Ridge()]
+                            LinearRegression(), AdaBoostRegressor(), SGDRegressor(), Lasso(), Ridge()]
         #CatBoostRegressor(), PoissonRegressor(),TweedieRegressor(), RANSACRegressor(),HistGradientBoostingRegressor()
-        models_classifiers = [Perceptron(),RandomForestClassifier(),
+        models_classifiers = [Perceptron(), RandomForestClassifier(),
                               DecisionTreeClassifier(), ExtraTreesClassifier(), LogisticRegression(),
-                              LogisticRegressionCV(),SVC(),
-                              LinearSVC(), RidgeClassifier(),IsolationForest(),
+                              LogisticRegressionCV(), SVC(),
+                              LinearSVC(), RidgeClassifier(), IsolationForest(),
                               MLPClassifier(), AdaBoostClassifier(),
                               PassiveAggressiveClassifier()]  #CatBoostClassifier(),
         # NO MEMORY FOR

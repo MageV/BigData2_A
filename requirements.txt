@@ -82,3 +82,5 @@ yarl==1.9.4
 zeep==4.2.1
 zstandard==0.22.0
 zstd==1.5.5.1
+
+tensorflow~=2.16.1

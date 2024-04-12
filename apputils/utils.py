@@ -132,8 +132,8 @@ def storage_init():
     Path(LOG_STORE).mkdir(parents=True, exist_ok=True)
 
 
-def multiclass_binning(frame, col_name):
+def multiclass_binning(frame, col_name,classes=9):
     binned = 'estimated'
-    labels = [-4,-3,-2,-1, 0, 1,2,3,4]
-    frame[binned], boundaries = pd.qcut(frame[col_name], q=9, precision=1, retbins=True,labels=labels)
+    labels = [_ for _ in range(classes)]
+    frame[binned], boundaries = pd.qcut(frame[col_name], q=classes, precision=1, retbins=True,labels=labels)
     return frame,boundaries,labels
