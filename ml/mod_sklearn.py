@@ -28,7 +28,7 @@ from providers.db_clickhouse import *
 from providers.df import df_clean
 
 
-def sk_learn_model(db_provider, appframe, features=None, models_class=AI_MODELS.AI_REGRESSORS, is_multiclass=False):
+def sk_learn_model(dataset, features=None, models_class=AI_MODELS.AI_REGRESSORS, is_multiclass=False):
     if features is None:
         features = ['*']
     best_model = None
@@ -37,13 +37,11 @@ def sk_learn_model(db_provider, appframe, features=None, models_class=AI_MODELS.
     best_scaler = None
     models_results = {}
     if not is_multiclass:
-        raw_data_1 = df_clean(db_provider, appframe, MSP_CLASS.MSP_UL, is_multiclass)
-        raw_data_1.dropna(inplace=True)
-        raw_data_2 = df_clean(db_provider, appframe, MSP_CLASS.MSP_FL, is_multiclass)
-        raw_data_2.dropna(inplace=True)
-        raw_data = pd.concat([raw_data_1, raw_data_2], axis=0, ignore_index=True)
+        raw_data=dataset
     else:
-        raw_data, boundaries, labels = df_clean(db_provider, appframe, is_multiclass=is_multiclass)
+        raw_data=dataset[0]
+        boundaries=dataset[1]
+        labels = dataset[2]
         raw_data.dropna(inplace=True)
     #raw_data=raw_data.dropna(inplace=True)
     # построение исходных данных модели

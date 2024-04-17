@@ -31,7 +31,7 @@ def df_clean_for_ai(df: pd.DataFrame, dbprovider, msp_type, multiclass=False):
 def df_fill_credit_apps(typeface, dates_frame, sors_frame, app_frame, debt_frame):
     if typeface == MSP_CLASS.MSP_UL:
         work_frame = sors_frame[sors_frame["msp_total"] > 0]
-        debt_work=debt_frame[debt_frame["msp_total"]>0]
+        debt_work = debt_frame[debt_frame["msp_total"] > 0]
         work_frame = work_frame[['date_rep', 'okato', 'msp_total']]
         debt_work = debt_work[['date_rep', 'okato', 'msp_total']]
     else:
@@ -46,7 +46,7 @@ def df_fill_credit_apps(typeface, dates_frame, sors_frame, app_frame, debt_frame
     for item in work_frame.itertuples():
         app_frame.loc[(app_frame['date_reg'] == item.date_rep) & (app_frame['region'] == item.okato), "credits_mass"] = \
             item[3]
-    debt_work=debt_work[(debt_work["date_rep"] >= min_date) & (debt_work["date_rep"] <= max_date)]
+    debt_work = debt_work[(debt_work["date_rep"] >= min_date) & (debt_work["date_rep"] <= max_date)]
     for item in debt_work.itertuples():
         app_frame.loc[(app_frame['date_reg'] == item.date_rep) & (app_frame['region'] == item.okato), "debt_mass"] = \
             item[3]
@@ -65,4 +65,19 @@ def df_clean(db_provider, appframe, msp_type: MSP_CLASS = MSP_CLASS.MSP_UL, is_m
         #raw_data = appframe.loc[appframe['typeface'] == msp_type.value]
         raw_data, boundaries, labels = multiclass_binning(appframe, 'sworkers')
         raw_data.drop(['date_reg', 'sworkers'], axis=1, inplace=True)
+        return raw_data, boundaries, labels
+
+
+def df_create_raw_data(db_provider, appframe, is_multiclass):
+    if not is_multiclass:
+        raw_data_1 = df_clean(db_provider, appframe, MSP_CLASS.MSP_UL, is_multiclass)
+        raw_data_1.dropna(inplace=True)
+        raw_data_2 = df_clean(db_provider, appframe, MSP_CLASS.MSP_FL, is_multiclass)
+        raw_data_2.dropna(inplace=True)
+        raw_data = pd.concat([raw_data_1, raw_data_2], axis=0, ignore_index=True)
+        raw_data.dropna(inplace=True)
+        return raw_data
+    else:
+        raw_data, boundaries, labels = df_clean(db_provider, appframe, is_multiclass=is_multiclass)
+        raw_data.dropna(inplace=True)
         return raw_data, boundaries, labels

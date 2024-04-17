@@ -60,7 +60,7 @@ class WebScraper:
     async def __get_file_web(self, name, store):
         # chunk_size = 64*1024*1024
         chunk_size = 8192
-        await write_log(message=f'File download started at: {dt.datetime.now()}', severity=SEVERITY.INFO)
+        await write_log(message=f'File {name} download started at: {dt.datetime.now()}', severity=SEVERITY.INFO)
         timeout = aiohttp.ClientTimeout(total=60 * 60, sock_read=240)
         async with aiohttp.ClientSession(timeout=timeout, headers=self.__headers).get(name) as response:
             async with aiofiles.open(store, mode="wb") as f:
