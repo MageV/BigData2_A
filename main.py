@@ -8,7 +8,7 @@ from apputils.archivers import ArchiveManager
 from apputils.observers import ZipFileObserver
 from apputils.utils import loadxml, drop_zip, drop_xml, drop_csv, drop_xlsx
 from ml.mod_sklearn import sk_learn_model
-from ml.mod_tflow import tf_learn
+from ml.mod_tflow import tf_learn_model
 from providers.df import *
 from providers.web import WebScraper
 
@@ -122,13 +122,17 @@ if __name__ == '__main__':
         raw_data_total = pd.concat([raw_data, raw_data_2], axis=0, ignore_index=True)
         asyncio.run(write_log(message=f'Finish for app_rows:FL:{dt.datetime.now()}', severity=SEVERITY.INFO))
         gc.collect()
-        binary_data = df_create_raw_data(db_provider=dbprovider, appframe=raw_data_total, is_multiclass=False)
         mclass_data, boundaries, labels = df_create_raw_data(db_provider=dbprovider, appframe=raw_data_total,
                                                              is_multiclass=True)
-        #sk_learn_model(db_provider=dbprovider, appframe=raw_data_total, models_class=AI_MODELS.AI_CLASSIFIERS,
-        #is_multiclass=False)
-        tf_learn(binary_data,pct=0.15,is_multiclass=False,features=DF_FEATURES.DFF_DEBTS)
-        tf_learn(binary_data, pct=0.15, is_multiclass=False, features=DF_FEATURES.DFF_CREDS)
-        tf_learn(binary_data, pct=0.15, is_multiclass=False)
-        #tf_learn([mclass_data, boundaries, labels], pct=0.10, is_multiclass=True)
+        binary_data = df_create_raw_data(db_provider=dbprovider, appframe=raw_data_total, is_multiclass=False)
+
+        tf_learn_model([mclass_data, boundaries, labels], pct=0.15, is_multiclass=True)
+        tf_learn_model([mclass_data, boundaries, labels], pct=0.15, is_multiclass=True, features=DF_FEATURES.DFF_DEBTS)
+        tf_learn_model([mclass_data, boundaries, labels], pct=0.15, is_multiclass=True, features=DF_FEATURES.DFF_CREDS)
+        tf_learn_model(binary_data, pct=0.15, is_multiclass=False, features=DF_FEATURES.DFF_DEBTS)
+        tf_learn_model(binary_data, pct=0.15, is_multiclass=False, features=DF_FEATURES.DFF_CREDS)
+        tf_learn_model(binary_data, pct=0.15, is_multiclass=False)
+        sk_learn_model(raw_data_total, models_class=AI_MODELS.AI_CLASSIFIERS, is_multiclass=False)
+        sk_learn_model([mclass_data, boundaries, labels], models_class=AI_MODELS.AI_CLASSIFIERS, is_multiclass=True)
+        sk_learn_model([mclass_data, boundaries, labels], models_class=AI_MODELS.AI_REGRESSORS, is_multiclass=True)
     asyncio.run(write_log(message=f'finished at:{dt.datetime.now()}', severity=SEVERITY.INFO))

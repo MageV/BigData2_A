@@ -37,9 +37,9 @@ def sk_learn_model(dataset, features=None, models_class=AI_MODELS.AI_REGRESSORS,
     best_scaler = None
     models_results = {}
     if not is_multiclass:
-        raw_data=dataset
+        raw_data=dataset.copy(deep=True)
     else:
-        raw_data=dataset[0]
+        raw_data=dataset[0].copy(deep=True)
         boundaries=dataset[1]
         labels = dataset[2]
         raw_data.dropna(inplace=True)

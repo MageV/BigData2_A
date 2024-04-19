@@ -5,6 +5,7 @@ import os
 import pandas as pd
 import pandasql as ps
 from bs4 import BeautifulSoup
+import scipy.stats as st
 
 from apputils.log import write_log
 from config.appconfig import *
@@ -132,8 +133,31 @@ def storage_init():
     Path(LOG_STORE).mkdir(parents=True, exist_ok=True)
 
 
-def multiclass_binning(frame, col_name,classes=9):
+def multiclass_binning(frame, col_name, classes=9):
     binned = 'estimated'
     labels = [_ for _ in range(classes)]
-    frame[binned], boundaries = pd.qcut(frame[col_name], q=classes, precision=1, retbins=True,labels=labels)
-    return frame,boundaries,labels
+    frame[binned], boundaries = pd.qcut(frame[col_name], q=classes, precision=1, retbins=True, labels=labels)
+    return frame, boundaries, labels
+
+
+def detect_distribution(data):
+    dist_names = ["norm", "exponweib", "weibull_max", "weibull_min", "pareto", "genextreme"]
+    dist_results = []
+    params = {}
+    for dist_name in dist_names:
+        dist = getattr(st, dist_name)
+        param = dist.fit(data)
+        params[dist_name] = param
+        # Applying the Kolmogorov-Smirnov test
+        D, p = st.kstest(data, dist_name, args=param)
+        print("p value for " + dist_name + " = " + str(p))
+        dist_results.append((dist_name, p))
+
+    # select the best fitted distribution
+    best_dist, best_p = (max(dist_results, key=lambda item: item[1]))
+    # store the name of the best fit and its p value
+
+    print("Best fitting distribution: " + str(best_dist))
+    print("Best p value: " + str(best_p))
+    print("Parameters for the best fit: " + str(params[best_dist]))
+    return best_dist, best_p, params[best_dist]

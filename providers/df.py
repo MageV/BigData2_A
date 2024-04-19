@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from apputils.utils import multiclass_binning
+from apputils.utils import multiclass_binning, detect_distribution
 from config.appconfig import MSP_CLASS
 
 from providers.db_clickhouse import *
@@ -55,15 +55,18 @@ def df_fill_credit_apps(typeface, dates_frame, sors_frame, app_frame, debt_frame
 
 
 def df_clean(db_provider, appframe, msp_type: MSP_CLASS = MSP_CLASS.MSP_UL, is_multiclass=False, istf=False):
+
     if not is_multiclass:
         raw_data = appframe.loc[appframe['typeface'] == msp_type.value]
+        best_dist, best_p, params= detect_distribution(raw_data['sworkers'].tolist())
         raw_data = df_clean_for_ai(raw_data, db_provider, msp_type)
         raw_data.drop(['date_reg', 'sworkers'], axis=1, inplace=True)
         return raw_data
     # raw_data["facetype"] = msp_type.value
     else:
-        #raw_data = appframe.loc[appframe['typeface'] == msp_type.value]
-        raw_data, boundaries, labels = multiclass_binning(appframe, 'sworkers')
+        raw_data = appframe.copy(deep=True)
+        raw_data, boundaries, labels = multiclass_binning(raw_data, 'sworkers')
+        best_dist, best_p, params = detect_distribution(raw_data['sworkers'].tolist())
         raw_data.drop(['date_reg', 'sworkers'], axis=1, inplace=True)
         return raw_data, boundaries, labels
 
