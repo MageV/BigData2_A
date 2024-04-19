@@ -1,9 +1,10 @@
 import matplotlib.pyplot as plt
 
 
-def do_plot_train_trees(model):
+def do_plot_train_trees(model,name):
     logs = model.make_inspector().training_logs()
-    plt.figure(figsize=(12, 4))
+    fig=plt.figure(figsize=(12, 4))
+    fig.canvas.manager.set_window_title(name)
     plt.subplot(1, 2, 1)
     plt.plot([log.num_trees for log in logs], [log.evaluation.accuracy for log in logs])
     plt.xlabel("Number of trees")
@@ -15,9 +16,10 @@ def do_plot_train_trees(model):
     plt.show()
 
 
-def do_plot_history_seq(history):
+def do_plot_history_seq(history,name):
     # Plotting Training and Validation Loss
-    plt.figure()
+    fig=plt.figure()
+    fig.canvas.manager.set_window_title(name)
     plt.plot(history.history['loss'], label='Training Loss')
     plt.plot(history.history['val_loss'], label='Validation Loss')
     plt.title('Training and Validation Loss')
