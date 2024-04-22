@@ -56,23 +56,26 @@ def preprocess_xml(file_list, processors_count, db_provider, debug=False):
         return result
 
 
+
+
 if __name__ == '__main__':
     freeze_support()
     asyncio.run(write_log(message=f'Started at:{dt.datetime.now()}', severity=SEVERITY.INFO))
     archive_manager, parser, processors, df, dbprovider = app_init()
     filelist = glob.glob(XML_STORE + '*.xml')
-    okato = parser.get_regions()
-    credit_msp = parser.get_sors(processors_count=processors)
-    credit_arc_msp = parser.get_sors_archive()
-    debt_msp = parser.get_debt(processors_count=processors)
-    debt_arc_msp = parser.get_debt_arc()
-    msp_sors = pd.concat([credit_msp, credit_arc_msp], axis=0, ignore_index=True)
-    msp_debt = pd.concat([debt_msp, debt_arc_msp], axis=0, ignore_index=True)
-    dbprovider.db_write_okato(okato)
-    dbprovider.db_prepare_tables(PRE_TABLES.PT_SORS)
-    dbprovider.db_write_credit_info(okato, msp_sors, PRE_TABLES.PT_SORS)
-    dbprovider.db_prepare_tables(PRE_TABLES.PT_DEBT)
-    dbprovider.db_write_credit_info(okato, msp_debt, PRE_TABLES.PT_DEBT)
+    if not DISABLE_LOAD:
+        okato = parser.get_regions()
+        credit_msp = parser.get_sors(processors_count=processors)
+        credit_arc_msp = parser.get_sors_archive()
+        debt_msp = parser.get_debt(processors_count=processors)
+        debt_arc_msp = parser.get_debt_arc()
+        msp_sors = pd.concat([credit_msp, credit_arc_msp], axis=0, ignore_index=True)
+        msp_debt = pd.concat([debt_msp, debt_arc_msp], axis=0, ignore_index=True)
+        dbprovider.db_write_okato(okato)
+        dbprovider.db_prepare_tables(PRE_TABLES.PT_SORS)
+        dbprovider.db_write_credit_info(okato, msp_sors, PRE_TABLES.PT_SORS)
+        dbprovider.db_prepare_tables(PRE_TABLES.PT_DEBT)
+        dbprovider.db_write_credit_info(okato, msp_debt, PRE_TABLES.PT_DEBT)
     if not APP_FILE_DEBUG and not XML_FILE_DEBUG:
         drop_zip()
         drop_xml()
@@ -97,7 +100,7 @@ if __name__ == '__main__':
         raw_data_total = pd.concat([raw_data, raw_data_2], axis=0, ignore_index=True)
         asyncio.run(write_log(message=f'Finish for app_rows:FL:{dt.datetime.now()}', severity=SEVERITY.INFO))
         gc.collect()
-        sk_learn_model(db_provider=dbprovider, appframe=raw_data_total, models_class=AI_MODELS.AI_ALL)
+
     elif XML_FILE_DEBUG:
         #      archive_manager.extract(source=APP_FILE_DEBUG_NAME, dest=XML_STORE)
         files_csv = glob.glob(RESULT_STORE + '*.csv')
@@ -125,11 +128,12 @@ if __name__ == '__main__':
         mclass_data, boundaries, labels = df_create_raw_data(db_provider=dbprovider, appframe=raw_data_total,
                                                              is_multiclass=True)
         binary_data = df_create_raw_data(db_provider=dbprovider, appframe=raw_data_total, is_multiclass=False)
-        tf_learn_model(binary_data, pct=0.15, is_multiclass=False, features=DF_FEATURES.DFF_DEBTS)
-        tf_learn_model(binary_data, pct=0.15, is_multiclass=False, features=DF_FEATURES.DFF_CREDS)
-        tf_learn_model(binary_data, pct=0.15, is_multiclass=False)
-        tf_learn_model([mclass_data, boundaries, labels], pct=0.15, is_multiclass=True)
-        sk_learn_model(raw_data_total, models_class=AI_MODELS.AI_CLASSIFIERS, is_multiclass=False)
-        sk_learn_model([mclass_data, boundaries, labels], models_class=AI_MODELS.AI_CLASSIFIERS, is_multiclass=True)
-        sk_learn_model([mclass_data, boundaries, labels], models_class=AI_MODELS.AI_REGRESSORS, is_multiclass=True)
+        tf_learn_model(binary_data, pct=0.1, is_multiclass=False)
+#        tf_learn_model(binary_data, pct=0.15, is_multiclass=False, features=DF_FEATURES.DFF_DEBTS)
+#        tf_learn_model(binary_data, pct=0.15, is_multiclass=False, features=DF_FEATURES.DFF_CREDS)
+
+ #       tf_learn_model([mclass_data, boundaries, labels], pct=0.15, is_multiclass=True)
+ #       sk_learn_model(raw_data_total, models_class=AI_MODELS.AI_CLASSIFIERS, is_multiclass=False)
+ #       sk_learn_model([mclass_data, boundaries, labels], models_class=AI_MODELS.AI_CLASSIFIERS, is_multiclass=True)
+ #       sk_learn_model([mclass_data, boundaries, labels], models_class=AI_MODELS.AI_REGRESSORS, is_multiclass=True)
     asyncio.run(write_log(message=f'finished at:{dt.datetime.now()}', severity=SEVERITY.INFO))

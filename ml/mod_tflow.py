@@ -5,6 +5,8 @@ target_size – аргумент, определяющий насколько д
 import math
 
 import tensorflow as tf
+
+from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
 from sklearn.preprocessing import MinMaxScaler, PowerTransformer, SplineTransformer
 from tensorflow import keras as ks
 from sklearn.model_selection import train_test_split
@@ -30,7 +32,7 @@ def custom_layer_initializer(shape, dtype=None, prob=0):
 
 
 def tf_learn_model(inp_ds, pct, is_multiclass, features=None, seasoning=False):
-    raw_data=inp_ds.copy(deep=True) if not is_multiclass else inp_ds[0].copy(deep=True)
+    raw_data = inp_ds.copy(deep=True) if not is_multiclass else inp_ds[0].copy(deep=True)
     evaluations = dict()
     ds_len = len(raw_data)
     pct_len = int(round(pct * ds_len, 0))
@@ -43,6 +45,7 @@ def tf_learn_model(inp_ds, pct, is_multiclass, features=None, seasoning=False):
         raw_data = raw_data[criteria_list]
 
     if not is_multiclass:
+        """
         try:
             train_pd_ds = raw_data.head(ds_len - pct_len).sample(frac=1)
             test_pd_ds = raw_data.tail(pct_len).sample(frac=1)
@@ -63,37 +66,39 @@ def tf_learn_model(inp_ds, pct, is_multiclass, features=None, seasoning=False):
             do_plot_train_trees(model_hboost, "GradientBoostTrees binary classification")
         except Exception as ex:
             print(ex.__str__())
+        """
         lr_scheduler_multiclass = ks.callbacks.LearningRateScheduler(scheduler, verbose=1)
         callback_stop_mc = ks.callbacks.EarlyStopping(monitor='val_accuracy',
                                                       mode='max', min_delta=0.001,
-                                                      patience=5)
+                                                      patience=10)
         ds = raw_data.copy(deep=True)
         labels = ["less or equal", "greater"]
         df_X = ds.drop(["estimated"], axis=1)
         df_Y = ds["estimated"].values
         X_train, X_test, Y_train, Y_test = train_test_split(df_X, df_Y, test_size=pct,
-                                                            shuffle=True, random_state=42)
+                                                            shuffle=False, random_state=42)
         input_nodes = int(df_X.shape[1])
         output_nodes = len(labels)
         hidden_units = 8
-        #    scaler = MinMaxScaler()
-        #    Xtr_scaled = scaler.fit_transform(X_train)
-        #    Xts_scaled = scaler.fit_transform(X_test)
+        #  scaler = MinMaxScaler()
+        #  Xtr_scaled = scaler.fit_transform(X_train)
+        #  Xts_scaled = scaler.fit_transform(X_test)
         try:
             model_class = ks.Sequential([
-                #                ks.layers.InputLayer((input_nodes,)),
-                ks.layers.Dense(input_nodes, activation='relu'),
-                ks.layers.Dropout(0.5),
-                ks.layers.Dense(int(hidden_units / 2), activation='relu'),
-                ks.layers.Dropout(0.5),
-                ks.layers.Dense(output_nodes, activation='softmax')])
+                ks.layers.InputLayer((input_nodes,)),
+                ks.layers.Dense(3072, activation='sigmoid', kernel_initializer='he_normal'),
+                ks.layers.Dense(1024, activation='sigmoid',kernel_initializer='he_normal'),
+                ks.layers.Dense(512, activation='sigmoid'),
+                ks.layers.Dense(1, activation='softmax'),
+            ])
             model_class.compile(optimizer="adam",
-                                loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+                                loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
                                 metrics=['accuracy'])
             history = model_class.fit(X_train, Y_train, batch_size=1, epochs=EPOCHS,
-                                      validation_data=[X_test, Y_test], shuffle=True,
+                                      validation_split=0.1, shuffle=True,
                                       callbacks=[lr_scheduler_multiclass, callback_stop_mc])
             evaluate_class = model_class.evaluate(X_test, Y_test)
+            predicted = model_class.predict(X_test)
             evaluations['classifiers'] = {
                 'loss': evaluate_class[0],
                 'accuracy': evaluate_class[1]
@@ -127,7 +132,7 @@ def tf_learn_model(inp_ds, pct, is_multiclass, features=None, seasoning=False):
             model_multiclass = ks.Sequential([
                 #                ks.layers.InputLayer((input_nodes,)),
                 ks.Input(shape=(4,)),
-                ks.layers.Dense(int(hidden_units /2), activation='relu'),
+                ks.layers.Dense(int(hidden_units / 2), activation='relu'),
                 #                ks.layers.Dense(int(hidden_units / 8), activation='relu'),
                 ks.layers.Dense(output_nodes, activation='softmax')])
             model_multiclass.compile(optimizer="adam",
@@ -185,4 +190,3 @@ def tf_learn_model(inp_ds, pct, is_multiclass, features=None, seasoning=False):
             do_plot_train_trees(model_hboost, "GradientBoost muliclass classification")
         except Exception as ex:
             print(ex.__str__())
-

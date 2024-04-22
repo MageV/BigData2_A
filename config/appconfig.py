@@ -35,6 +35,7 @@ APP_FILE_DEBUG_NAME = ZIP_FOIV + 'd6d2fe2c-bf67-11ee-97b7-a20ddd0a7cd3_new.zip'
 MERGE_DEBUG = True
 CREDITS_DEBUG = True
 ON_LOADED_TABLES = True
+DISABLE_LOAD=True
 
 
 class PRE_TABLES(Enum):
