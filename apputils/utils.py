@@ -2,8 +2,10 @@ import asyncio
 import datetime as dt
 import glob
 import os
+
+import numpy as np
 import pandas as pd
-import pandasql as ps
+import tensorflow as tf
 from bs4 import BeautifulSoup
 import scipy.stats as st
 
@@ -161,3 +163,13 @@ def detect_distribution(data):
     print("Best p value: " + str(best_p))
     print("Parameters for the best fit: " + str(params[best_dist]))
     return best_dist, best_p, params[best_dist]
+
+
+def prepare_con_mat(con_mat, classes):
+    tf.experimental.numpy.experimental_enable_numpy_behavior()
+    con_mat_norm = np.around(con_mat.astype('float') / con_mat.sum(axis=1)[:, np.newaxis], decimals=2)
+
+    con_mat_df = pd.DataFrame(con_mat_norm,
+                              index=classes,
+                              columns=classes)
+    return con_mat_df

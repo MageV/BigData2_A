@@ -3,39 +3,37 @@ history_size — это размер последнего временного �
 target_size – аргумент, определяющий насколько далеко в будущее модель должна научиться прогнозировать
 """
 import math
-
+import numpy as np
 import tensorflow as tf
 
 from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
-from sklearn.preprocessing import MinMaxScaler, PowerTransformer, SplineTransformer
+from sklearn.preprocessing import MinMaxScaler
 from tensorflow import keras as ks
 from sklearn.model_selection import train_test_split
 import tensorflow_decision_forests as tfdf
 import os
 
-from providers.ui import do_plot_train_trees, do_plot_history_seq
+from apputils.utils import prepare_con_mat
+from providers.df import df_remove_outliers
+from providers.ui import *
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-
-EPOCHS = 50
 
 
 def scheduler(epoch, lr):
     if epoch < 5:
-        return round(lr, 4)
-    else:
-        return round(lr * math.exp(-0.1), 4)
+        return 0.001 * 10 ** (epoch / 20)
 
 
-def custom_layer_initializer(shape, dtype=None, prob=0):
-    return ks.backend.binomial(shape=shape, dtype=dtype, p=prob)
-
-
-def tf_learn_model(inp_ds, pct, is_multiclass, features=None, seasoning=False):
-    raw_data = inp_ds.copy(deep=True) if not is_multiclass else inp_ds[0].copy(deep=True)
+def tf_learn_model(inp_ds, pct, is_multiclass, features=None, seasoning=False, skiptree=False):
+    raw_data = df_remove_outliers(inp_ds.copy(deep=True)) if not is_multiclass else inp_ds[0].copy(deep=True)
     evaluations = dict()
     ds_len = len(raw_data)
     pct_len = int(round(pct * ds_len, 0))
+    num_train_examples = 6000
+    num_epochs = 50
+    batch_size = 8
+    batch_size_trees = 128
 
     if features is not None:
         raw_data = raw_data if not is_multiclass else raw_data[0]
@@ -43,150 +41,122 @@ def tf_learn_model(inp_ds, pct, is_multiclass, features=None, seasoning=False):
         frame_cols = raw_data.columns.tolist()
         criteria_list = [x for x in frame_cols if x in features_vals]
         raw_data = raw_data[criteria_list]
-
+    train_pd_ds = raw_data.head(ds_len - pct_len)
+    features: list = train_pd_ds.columns.tolist()
+    features.remove('estimated')
+    test_pd_ds = raw_data.tail(pct_len)
+    tf_train = (
+        tf.data.Dataset.from_tensor_slices(
+            (
+                tf.cast(train_pd_ds[features].values, tf.float32),
+                tf.cast(train_pd_ds['estimated'].values, tf.int32)
+            )
+        )
+    )
+    tf_test = (
+        tf.data.Dataset.from_tensor_slices(
+            (
+                tf.cast(test_pd_ds[features].values, tf.float32),
+                tf.cast(test_pd_ds['estimated'].values, tf.int32)
+            )
+        )
+    )
     if not is_multiclass:
-        """
+
+        if not skiptree:
+            try:
+                tf_train_trees = tf_train.batch(batch_size_trees)
+                tf_test_trees = tf_test.batch(batch_size_trees)
+                tuner = tfdf.tuner.RandomSearch(num_trials=200,
+                                                trial_num_threads=12)
+                model_rf = tfdf.keras.RandomForestModel(tuner=tuner, )
+                model_hboost = tfdf.keras.GradientBoostedTreesModel(tuner=tuner, )
+                model_rf.fit(tf_train_trees)
+                model_hboost.fit(tf_train_trees)
+                model_hboost.compile(metrics=['accuracy'])
+                model_rf.compile(metrics=["accuracy"])
+                evaluate_rf = model_rf.evaluate(tf_test_trees, return_dict=True)
+                evaluate_hboost = model_hboost.evaluate(tf_test_trees, return_dict=True)
+                predict_rf = model_rf.predict(test_pd_ds[features].values)
+                predict_hboost = model_hboost.predict(test_pd_ds[features].values)
+                confmx_rf = tf.math.confusion_matrix(predict_rf, test_pd_ds['estimated'].values)
+                print(confmx_rf)
+                confmx_hboost = tf.math.confusion_matrix(predict_hboost, test_pd_ds['estimated'].values)
+                print(confmx_hboost)
+                do_plot_train_trees(model_rf, "RandomForestClassifier binary classification")
+                do_plot_train_trees(model_hboost, "GradientBoostTrees binary classification")
+            # do_plot_conf_mx(df_mx_hboost,"Confusion matrix GradientBoostTrees binary classification")
+            except Exception as ex:
+                print(ex.__str__())
         try:
-            train_pd_ds = raw_data.head(ds_len - pct_len).sample(frac=1)
-            test_pd_ds = raw_data.tail(pct_len).sample(frac=1)
-            train_ds_tf = tfdf.keras.pd_dataframe_to_tf_dataset(train_pd_ds, label='estimated',
-                                                                task=tfdf.keras.Task.CLASSIFICATION)
-            test_ds_tf = tfdf.keras.pd_dataframe_to_tf_dataset(test_pd_ds, label='estimated',
-                                                               task=tfdf.keras.Task.CLASSIFICATION)
-            tuner = tfdf.tuner.RandomSearch(num_trials=100, use_predefined_hps=True, trial_num_threads=12)
-            model_rf = tfdf.keras.RandomForestModel(tuner=tuner, )
-            model_hboost = tfdf.keras.GradientBoostedTreesModel(tuner=tuner, )
-            model_rf.fit(train_ds_tf)
-            model_hboost.fit(train_ds_tf)
-            model_hboost.compile(metrics=['accuracy'])
-            model_rf.compile(metrics=["accuracy"])
-            evaluate_rf = model_rf.evaluate(test_ds_tf, return_dict=True)
-            evaluate_hboost = model_hboost.evaluate(test_ds_tf, return_dict=True)
-            do_plot_train_trees(model_rf, "RandomForestClassifier binary classification")
-            do_plot_train_trees(model_hboost, "GradientBoostTrees binary classification")
-        except Exception as ex:
-            print(ex.__str__())
-        """
-        lr_scheduler_multiclass = ks.callbacks.LearningRateScheduler(scheduler, verbose=1)
-        callback_stop_mc = ks.callbacks.EarlyStopping(monitor='val_accuracy',
-                                                      mode='max', min_delta=0.001,
-                                                      patience=10)
-        ds = raw_data.copy(deep=True)
-        labels = ["less or equal", "greater"]
-        df_X = ds.drop(["estimated"], axis=1)
-        df_Y = ds["estimated"].values
-        X_train, X_test, Y_train, Y_test = train_test_split(df_X, df_Y, test_size=pct,
-                                                            shuffle=False, random_state=42)
-        input_nodes = int(df_X.shape[1])
-        output_nodes = len(labels)
-        hidden_units = 8
-        #  scaler = MinMaxScaler()
-        #  Xtr_scaled = scaler.fit_transform(X_train)
-        #  Xts_scaled = scaler.fit_transform(X_test)
-        try:
+            tf_train_nn = tf_train.shuffle(
+                num_train_examples, reshuffle_each_iteration=True).repeat().batch(batch_size)
+            tf_test_nn = tf_test.shuffle(
+                num_train_examples, reshuffle_each_iteration=True).batch(batch_size)
+            lr_scheduler_multiclass = ks.callbacks.LearningRateScheduler(scheduler, verbose=1)
+            callback_stop_mc = ks.callbacks.EarlyStopping(monitor='val_binary_accuracy',
+                                                          mode='max', min_delta=0.001,
+                                                          patience=8)
             model_class = ks.Sequential([
-                ks.layers.InputLayer((input_nodes,)),
-                ks.layers.Dense(3072, activation='sigmoid', kernel_initializer='he_normal'),
-                ks.layers.Dense(1024, activation='sigmoid',kernel_initializer='he_normal'),
-                ks.layers.Dense(512, activation='sigmoid'),
-                ks.layers.Dense(1, activation='softmax'),
+                ks.layers.Flatten(input_shape=(len(features),)),
+                ks.layers.BatchNormalization(trainable=False),
+                ks.layers.Dense(4095, activation='leaky_relu', kernel_initializer="uniform"),
+                ks.layers.Dropout(0.1),
+                ks.layers.Dense(2047, activation='linear', kernel_initializer="uniform"),
+                ks.layers.BatchNormalization(trainable=False),
+                ks.layers.Dense(15, activation='leaky_relu'),
+                ks.layers.Dense(7, activation='linear', kernel_initializer="uniform"),
+                ks.layers.BatchNormalization(trainable=False),
+                ks.layers.Dense(5, activation='leaky_relu'),
+                ks.layers.Dense(1, activation='sigmoid', kernel_initializer="uniform"),
             ])
-            model_class.compile(optimizer="adam",
-                                loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
-                                metrics=['accuracy'])
-            history = model_class.fit(X_train, Y_train, batch_size=1, epochs=EPOCHS,
-                                      validation_split=0.1, shuffle=True,
-                                      callbacks=[lr_scheduler_multiclass, callback_stop_mc])
-            evaluate_class = model_class.evaluate(X_test, Y_test)
-            predicted = model_class.predict(X_test)
+            model_class.compile(optimizer=ks.optimizers.Adam(learning_rate=0.005, amsgrad=True),
+                                loss='binary_crossentropy',
+                                metrics=['binary_accuracy'])
+            history = model_class.fit(tf_train_nn, epochs=num_epochs, validation_data=tf_test_nn,
+                                      shuffle=True, steps_per_epoch=math.ceil(num_train_examples / batch_size),
+                                      callbacks=[callback_stop_mc])
+            evaluate_class = model_class.evaluate(tf_test_nn)
             evaluations['classifiers'] = {
                 'loss': evaluate_class[0],
                 'accuracy': evaluate_class[1]
             }
-            do_plot_history_seq(history, "Sequential NN binary classification")
+            do_plot_history_seq(history, "Sequential NN binary classification", "binary_accuracy")
         except Exception as ex:
             print(ex.__str__())
     else:
+        batch_size = 1
         lr_scheduler_multiclass = ks.callbacks.LearningRateScheduler(scheduler, verbose=1)
-        lr_scheduler_regressor = ks.callbacks.LearningRateScheduler(scheduler, verbose=1)
         callback_stop_mc = ks.callbacks.EarlyStopping(monitor='val_accuracy',
                                                       mode='max', min_delta=0.001,
                                                       patience=8)
-        callback_stop_rg = ks.callbacks.EarlyStopping(monitor='val_mae',
-                                                      mode='max', min_delta=0.001,
-                                                      patience=5)
-
-        ds = raw_data[0].copy(deep=True)
-        labels = raw_data[2]
-        df_X = ds.drop(["estimated"], axis=1)
-        df_Y = ds["estimated"].values
-        X_train, X_test, Y_train, Y_test = train_test_split(df_X, df_Y, test_size=pct,
-                                                            shuffle=True, random_state=42)
-        input_nodes = int(df_X.shape[1])
-        output_nodes = len(labels)
-        hidden_units = 16
-        scaler = MinMaxScaler()
-        Xtr_scaled = scaler.fit_transform(X_train)
-        Xts_scaled = scaler.fit_transform(X_test)
+        tf_train_nn = tf_train.shuffle(
+            num_train_examples, reshuffle_each_iteration=True).repeat().batch(batch_size)
+        tf_test_nn = tf_test.shuffle(
+            num_train_examples, reshuffle_each_iteration=True).batch(batch_size)
+        input_nodes = int(len(features))
+        output_nodes = len(inp_ds[2])
         try:
             model_multiclass = ks.Sequential([
-                #                ks.layers.InputLayer((input_nodes,)),
-                ks.Input(shape=(4,)),
-                ks.layers.Dense(int(hidden_units / 2), activation='relu'),
-                #                ks.layers.Dense(int(hidden_units / 8), activation='relu'),
-                ks.layers.Dense(output_nodes, activation='softmax')])
-            model_multiclass.compile(optimizer="adam",
-                                     loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-                                     metrics=['accuracy'])
-            history = model_multiclass.fit(Xtr_scaled, Y_train, batch_size=1, epochs=EPOCHS,
-                                           validation_data=[Xts_scaled, Y_test]
-                                           , callbacks=[lr_scheduler_multiclass, callback_stop_mc])
-            evaluate_multiclass = model_multiclass.evaluate(Xts_scaled, Y_test)
-            evaluations['classifiers'] = {
+                ks.layers.Flatten(input_shape=(input_nodes,)),
+                ks.layers.BatchNormalization(trainable=False),
+                ks.layers.Dense(2048, activation='leaky_relu', kernel_initializer="uniform"),
+                ks.layers.Dropout(0.3),
+                ks.layers.Dense(512, activation='softmax', kernel_initializer="uniform"),
+                ks.layers.BatchNormalization(trainable=False),
+                ks.layers.Dense(15, activation='leaky_relu'),
+                ks.layers.Dense(output_nodes, activation='sigmoid', kernel_initializer="uniform"),
+            ])
+            model_multiclass.compile(ks.optimizers.Adam(learning_rate=0.005, amsgrad=True), loss="mse", metrics=['mae'])
+            history = model_multiclass.fit(tf_train_nn, batch_size=batch_size, epochs=num_epochs,
+                                           validation_data=tf_test_nn,
+                                           shuffle=True, steps_per_epoch=math.ceil(num_train_examples / batch_size)
+                                           , callbacks=[callback_stop_mc])
+            evaluate_multiclass = model_multiclass.evaluate(tf_test_nn)
+            evaluations['regression'] = {
                 'loss': evaluate_multiclass[0],
-                'accuracy': evaluate_multiclass[1]
+                'mse': evaluate_multiclass[1]
             }
-            do_plot_history_seq(history, "Sequential NN muliclass classification")
-        except Exception as ex:
-            print(ex.__str__())
-        try:
-            model_regress = ks.Sequential([
-                ks.Input(shape=(4,)),
-                ks.layers.Dense(int(hidden_units), activation='leaky_relu'),
-                ks.layers.Dense(output_nodes, activation='sigmoid')])
-            model_regress.compile(optimizer="adam", loss='mse', metrics=['mae'])
-            history = model_regress.fit(Xtr_scaled, Y_train, batch_size=1, epochs=EPOCHS,
-                                        validation_data=[Xts_scaled, Y_test],
-                                        callbacks=[lr_scheduler_regressor, callback_stop_rg])
-            do_plot_history_seq(history, "Sequential NN muliclass regression")
-            evaluate_regress = model_regress.evaluate(Xts_scaled, Y_test)
-            evaluations['regressors'] = {
-                'loss:MSE': evaluate_regress[0],
-                'accuracy:MAE': evaluate_regress[1]
-            }
-
-        except Exception as ex:
-            print(ex.__str__())
-        try:
-            ds = raw_data[0]
-            ds_len = len(ds)
-            pct_len = int(round(pct * ds_len, 0))
-            train_pd_ds = ds.head(ds_len - pct_len).sample(frac=1)
-            test_pd_ds = ds.tail(pct_len).sample(frac=1)
-            train_ds_tf = tfdf.keras.pd_dataframe_to_tf_dataset(train_pd_ds, label='estimated',
-                                                                task=tfdf.keras.Task.REGRESSION)
-            test_ds_tf = tfdf.keras.pd_dataframe_to_tf_dataset(test_pd_ds, label='estimated',
-                                                               task=tfdf.keras.Task.REGRESSION)
-            tuner = tfdf.tuner.RandomSearch(num_trials=100, use_predefined_hps=True, trial_num_threads=12)
-            model_rf = tfdf.keras.RandomForestModel(tuner=tuner, task=tfdf.keras.Task.REGRESSION)
-            model_hboost = tfdf.keras.GradientBoostedTreesModel(tuner=tuner, task=tfdf.keras.Task.REGRESSION)
-            model_rf.fit(train_ds_tf)
-            model_hboost.fit(train_ds_tf)
-            model_hboost.compile(metrics=['mse'])
-            model_rf.compile(metrics=["mse"])
-            evaluate_rf = model_rf.evaluate(test_ds_tf, return_dict=True)
-            evaluate_hboost = model_hboost.evaluate(test_ds_tf, return_dict=True)
-            do_plot_train_trees(model_rf, "RandomForest muliclass classification")
-            do_plot_train_trees(model_hboost, "GradientBoost muliclass classification")
+            do_plot_history_seq(history, "Sequential NN muliclass classification", metric='mse')
         except Exception as ex:
             print(ex.__str__())
