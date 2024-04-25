@@ -157,6 +157,7 @@ def tf_learn_model(inp_ds, pct, is_multiclass, features=None, seasoning=False, s
                 'loss': evaluate_multiclass[0],
                 'mse': evaluate_multiclass[1]
             }
+
             do_plot_history_seq(history, "Sequential NN muliclass classification", metric='mse')
         except Exception as ex:
             print(ex.__str__())
