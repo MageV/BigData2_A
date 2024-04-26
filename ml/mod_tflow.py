@@ -16,6 +16,7 @@ import os
 from apputils.utils import prepare_con_mat
 from providers.df import df_remove_outliers
 from providers.ui import *
+from config.appconfig import *
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
@@ -25,8 +26,11 @@ def scheduler(epoch, lr):
         return 0.001 * 10 ** (epoch / 20)
 
 
-def tf_learn_model(inp_ds, pct, is_multiclass, features=None, seasoning=False, skiptree=False):
+def tf_learn_model(inp_ds, pct, is_multiclass, features=None, skiptree=False, tface=None):
     raw_data = df_remove_outliers(inp_ds.copy(deep=True)) if not is_multiclass else inp_ds[0].copy(deep=True)
+    if tface is not None:
+        raw_data = raw_data.loc[raw_data['typeface'] == tface.value]
+        raw_data.drop('typeface', inplace=True,axis=1)
     evaluations = dict()
     ds_len = len(raw_data)
     pct_len = int(round(pct * ds_len, 0))
@@ -127,7 +131,7 @@ def tf_learn_model(inp_ds, pct, is_multiclass, features=None, seasoning=False, s
     else:
         batch_size = 1
         lr_scheduler_multiclass = ks.callbacks.LearningRateScheduler(scheduler, verbose=1)
-        callback_stop_mc = ks.callbacks.EarlyStopping(monitor='val_accuracy',
+        callback_stop_mc = ks.callbacks.EarlyStopping(monitor='val_mae',
                                                       mode='max', min_delta=0.001,
                                                       patience=8)
         tf_train_nn = tf_train.shuffle(
@@ -139,25 +143,28 @@ def tf_learn_model(inp_ds, pct, is_multiclass, features=None, seasoning=False, s
         try:
             model_multiclass = ks.Sequential([
                 ks.layers.Flatten(input_shape=(input_nodes,)),
-                ks.layers.BatchNormalization(trainable=False),
-                ks.layers.Dense(2048, activation='leaky_relu', kernel_initializer="uniform"),
+                ks.layers.BatchNormalization(),
+                ks.layers.Dense(2048, activation='relu', kernel_initializer="he_normal"),
                 ks.layers.Dropout(0.3),
-                ks.layers.Dense(512, activation='softmax', kernel_initializer="uniform"),
-                ks.layers.BatchNormalization(trainable=False),
-                ks.layers.Dense(15, activation='leaky_relu'),
-                ks.layers.Dense(output_nodes, activation='sigmoid', kernel_initializer="uniform"),
+                ks.layers.Dense(512, activation='softmax', kernel_initializer="he_normal"),
+                ks.layers.Dropout(0.3),
+                ks.layers.Dense(15, activation='relu'),
+                ks.layers.Dense(output_nodes - 2, activation='relu', kernel_initializer="uniform"),
+                ks.layers.Dense(output_nodes, activation='sigmoid'),
             ])
-            model_multiclass.compile(ks.optimizers.Adam(learning_rate=0.005, amsgrad=True), loss="mse", metrics=['mae'])
+            opt = tf.keras.optimizers.Adagrad()
+            opt = tf.keras.mixed_precision.LossScaleOptimizer(opt)
+            model_multiclass.compile(opt, loss="mse", metrics=['mae'])
             history = model_multiclass.fit(tf_train_nn, batch_size=batch_size, epochs=num_epochs,
                                            validation_data=tf_test_nn,
-                                           shuffle=True, steps_per_epoch=math.ceil(num_train_examples / batch_size)
-                                           , callbacks=[callback_stop_mc])
+                                           steps_per_epoch=math.ceil(num_train_examples / batch_size)
+                                           , )
             evaluate_multiclass = model_multiclass.evaluate(tf_test_nn)
             evaluations['regression'] = {
                 'loss': evaluate_multiclass[0],
                 'mse': evaluate_multiclass[1]
             }
 
-            do_plot_history_seq(history, "Sequential NN muliclass classification", metric='mse')
+            do_plot_history_seq(history, "Sequential NN muliclass classification", metric='mae')
         except Exception as ex:
             print(ex.__str__())
