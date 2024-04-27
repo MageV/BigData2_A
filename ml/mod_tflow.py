@@ -3,20 +3,10 @@ history_size — это размер последнего временного �
 target_size – аргумент, определяющий насколько далеко в будущее модель должна научиться прогнозировать
 """
 import math
-import numpy as np
 import tensorflow as tf
-from keras import Model
-from keras.src.layers import Concatenate, Subtract
-from keras.src.utils import plot_model
-
-from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
-from sklearn.preprocessing import MinMaxScaler
-from tensorflow import keras as ks
-from sklearn.model_selection import train_test_split
 import tensorflow_decision_forests as tfdf
 import os
-
-from apputils.utils import prepare_con_mat
+from ml.custom_ml_model import *
 from providers.df import df_remove_outliers
 from providers.ui import *
 from config.appconfig import *
@@ -27,6 +17,9 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 def scheduler(epoch, lr):
     if epoch < 5:
         return 0.001 * 10 ** (epoch / 20)
+
+
+
 
 
 def tf_learn_model(inp_ds, pct, is_multiclass, features=None, skiptree=False, tface=None):
@@ -55,7 +48,7 @@ def tf_learn_model(inp_ds, pct, is_multiclass, features=None, skiptree=False, tf
     tf_train = (
         tf.data.Dataset.from_tensor_slices(
             (
-                tf.cast(train_pd_ds[features].values, tf.float16),
+                tf.cast(train_pd_ds[features].values, tf.float32),
                 tf.cast(train_pd_ds['estimated'].values, tf.uint8)
             )
         )
@@ -63,7 +56,7 @@ def tf_learn_model(inp_ds, pct, is_multiclass, features=None, skiptree=False, tf
     tf_test = (
         tf.data.Dataset.from_tensor_slices(
             (
-                tf.cast(test_pd_ds[features].values, tf.float16),
+                tf.cast(test_pd_ds[features].values, tf.float32),
                 tf.cast(test_pd_ds['estimated'].values, tf.uint8)
             )
         )
@@ -96,21 +89,13 @@ def tf_learn_model(inp_ds, pct, is_multiclass, features=None, skiptree=False, tf
             except Exception as ex:
                 print(ex.__str__())
         try:
+            hidden_units=[1024,512,128,64,4]
             tf_train_nn_single = tf_train.shuffle(
                 num_train_examples, reshuffle_each_iteration=True).repeat().batch(batch_size)
             tf_test_nn = tf_test.shuffle(
                 num_train_examples, reshuffle_each_iteration=True).batch(batch_size)
             tf_val_nn=tf_train_nn_single.take(8)
-            input_layer=ks.layers.Input((len(features),))
-            input_flat= ks.layers.Flatten(input_shape=(len(features),))(input_layer)
-            hidden_norm=ks.layers.BatchNormalization(trainable=False)(input_flat)
-            hidden_3_1 = ks.layers.Dense(1024, activation='relu')(hidden_norm)
-            hidden_4_1 = ks.layers.Dense(512, activation='relu')(hidden_3_1)
-            hidden_5_1 = ks.layers.Dense(128, activation='relu')(hidden_4_1)
-            hidden_6_1 = ks.layers.Dense(64, activation='relu')(hidden_5_1)
-            #out_layer=Concatenate()([hidden_3_1,hidden_4_1,hidden_5_1,hidden_6_1])
-            out_layer_total=ks.layers.Dense(1,activation='sigmoid')(hidden_6_1)
-            model_class=Model(input_layer,out_layer_total)
+            model_class=create_baseline_model(hidden_units,features,1)
             model_class.compile(optimizer="adam",loss='binary_crossentropy',metrics=['binary_accuracy'])
             model_class.summary()
             history = model_class.fit(tf_train_nn_single, epochs=num_epochs, validation_data=tf_val_nn,
@@ -125,6 +110,7 @@ def tf_learn_model(inp_ds, pct, is_multiclass, features=None, skiptree=False, tf
         except Exception as ex:
             print(ex.__str__())
     else:
+        hidden_units = [1024, 512, 128, 64, 12]
         batch_size = 1
         tf_train_nn = tf_train.shuffle(
             num_train_examples, reshuffle_each_iteration=True).repeat().batch(batch_size)
@@ -134,19 +120,8 @@ def tf_learn_model(inp_ds, pct, is_multiclass, features=None, skiptree=False, tf
         output_nodes = len(inp_ds[2])
         tf_val_nn = tf_train_nn.take(8)
         try:
-            model_multiclass = ks.Sequential([
-                ks.layers.Input((len(features),)),
-                ks.layers.Flatten(input_shape=(input_nodes,)),
-                ks.layers.BatchNormalization(),
-                ks.layers.Dense(2048, activation='relu', kernel_initializer="he_normal"),
-                ks.layers.Dropout(0.3),
-                ks.layers.Dense(512, activation='softmax', kernel_initializer="he_normal"),
-                ks.layers.Dropout(0.3),
-                ks.layers.Dense(15, activation='relu'),
-                ks.layers.Dense(output_nodes - 2, activation='relu', kernel_initializer="uniform"),
-                ks.layers.Dense(output_nodes, activation='sigmoid'),
-            ])
-            model_multiclass.compile("adam", loss="mse", metrics=['mae'])
+            model_multiclass = create_baseline_model(features=features,hidden_units=hidden_units,output=output_nodes)
+            model_multiclass.compile("adam", loss='mse', metrics=['mae'])
             model_multiclass.summary()
             history = model_multiclass.fit(tf_train_nn, batch_size=batch_size, epochs=num_epochs,
                                            validation_data=tf_val_nn,

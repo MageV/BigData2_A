@@ -21,7 +21,7 @@ def df_clean_for_ai(df: pd.DataFrame, dbprovider, msp_type, multiclass=False):
     df_o = pd.DataFrame()
     df_mm = dbprovider.db_get_workers_limits(msp_type)
     for item in okatos.itertuples():
-        asyncio.run(write_log(message=f'OKATO:{item.region}', severity=SEVERITY.INFO))
+ #       asyncio.run(write_log(message=f'OKATO:{item.region}', severity=SEVERITY.INFO))
         subset = df[df['region'] == item.region]
         df_1 = df_recode_workers(subset)
         df_o = pd.concat([df_o, df_1], axis=0, ignore_index=True)
