@@ -173,3 +173,12 @@ def prepare_con_mat(con_mat, classes):
                               index=classes,
                               columns=classes)
     return con_mat_df
+
+def remove_outliers(df,colname):
+    Q1 = np.percentile(df[colname], 25, method='midpoint')
+    Q3 = np.percentile(df[colname], 75, method='midpoint')
+    IQR = Q3 - Q1
+    upper = Q3 + 1.5 * IQR
+    lower = Q1 - 1.5 * IQR
+    subset = df.loc[(df[colname] >= lower) & (df[colname] <= upper)]
+    return subset

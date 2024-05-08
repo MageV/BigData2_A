@@ -51,6 +51,7 @@ def df_fill_credit_apps(typeface, dates_frame, sors_frame, app_frame, debt_frame
         app_frame.loc[(app_frame['date_reg'] == item.date_rep) & (app_frame['region'] == item.okato), "debt_mass"] = \
             item[3]
     app_frame["typeface"] = typeface.value
+    app_frame.dropna(inplace=True)
     return app_frame
 
 
