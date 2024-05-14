@@ -94,5 +94,11 @@ class MSP_CLASS(Enum):
     MSP_FL = 0
     MSP_UL = 1
 
+class TF_OPTIONS(Enum):
+    TF_TREES_BINARY=auto()
+    TF_NN_BINARY=auto()
+    TF_NN_MULTU=auto()
+    TF_LSTM=auto()
+
 
 DEFAULT_ARC = ARC_TYPES.ZIP

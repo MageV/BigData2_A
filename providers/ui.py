@@ -17,8 +17,10 @@ def do_plot_train_trees(model, name):
     plt.show()
 
 
-def do_plot_history_seq(history, name, metric='accuracy'):
+def do_plot_history_seq(history, name, metric=None):
     # Plotting Training and Validation Loss
+    if metric is None:
+        metric = ['accuracy']
     fig = plt.figure(figsize=(12, 4))
     fig.canvas.manager.set_window_title(name)
     plt.subplot(1, 2, 1)
@@ -29,11 +31,12 @@ def do_plot_history_seq(history, name, metric='accuracy'):
     plt.ylabel('Loss')
     plt.legend()
     plt.subplot(1, 2, 2)
-    plt.plot(history.history[metric], label=f'Training {metric} ')
-    plt.plot(history.history[f'val_{metric}'], label=f'Validation {metric}')
+    for item in metric:
+        plt.plot(history.history[item], label=f'Training {item} ')
+        plt.plot(history.history[f'val_{item}'], label=f'Validation {item}')
+        plt.ylabel(f'{item}')
     plt.title(f'Training and Validation {metric}')
     plt.xlabel('Epochs')
-    plt.ylabel(f'{metric}')
     plt.legend()
     plt.show()
 

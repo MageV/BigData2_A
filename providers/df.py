@@ -58,7 +58,6 @@ def df_fill_credit_apps(typeface, dates_frame, sors_frame, app_frame, debt_frame
 def df_clean(db_provider, appframe, msp_type: MSP_CLASS = MSP_CLASS.MSP_UL, is_multiclass=False, istf=False):
     if not is_multiclass:
         raw_data = appframe.loc[appframe['typeface'] == msp_type.value]
-        best_dist, best_p, params = detect_distribution(raw_data['sworkers'].tolist())
         raw_data = df_clean_for_ai(raw_data, db_provider, msp_type)
         raw_data.drop(['date_reg', 'sworkers'], axis=1, inplace=True)
         return raw_data
@@ -66,7 +65,6 @@ def df_clean(db_provider, appframe, msp_type: MSP_CLASS = MSP_CLASS.MSP_UL, is_m
     else:
         raw_data = appframe.copy(deep=True)
         raw_data, boundaries, labels = multiclass_binning(raw_data, 'sworkers')
-        best_dist, best_p, params = detect_distribution(raw_data['sworkers'].tolist())
         raw_data.drop(['date_reg', 'sworkers'], axis=1, inplace=True)
         return raw_data, boundaries, labels
 
@@ -86,5 +84,3 @@ def df_create_raw_data(db_provider, appframe, is_multiclass):
         return raw_data, boundaries, labels
 
 
-def df_remove_outliers(df: pd.DataFrame):
-    return df[(np.abs(stats.zscore(df)) < 3).all(axis=1)]

@@ -180,5 +180,5 @@ def remove_outliers(df,colname):
     IQR = Q3 - Q1
     upper = Q3 + 1.5 * IQR
     lower = Q1 - 1.5 * IQR
-    subset = df.loc[(df[colname] >= lower) & (df[colname] <= upper)]
-    return subset
+    df.loc[(df[colname] >= lower) & (df[colname] <= upper),colname]=df[colname].median()
+    return df

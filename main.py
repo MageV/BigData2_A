@@ -8,9 +8,7 @@ import pandas as pd
 
 from apputils.archivers import ArchiveManager
 from apputils.observers import ZipFileObserver
-from apputils.utils import loadxml, drop_zip, drop_xml, drop_csv, drop_xlsx
-from ml.ml_utils import seasonal_clean_by_okato
-from ml.mod_sklearn import sk_learn_model
+from apputils.utils import loadxml, drop_zip, drop_xml, drop_csv, drop_xlsx, remove_outliers
 from ml.mod_tflow import tf_learn_model
 from providers.df import *
 from providers.web import WebScraper
@@ -118,10 +116,21 @@ if __name__ == '__main__':
         sors = dbprovider.get_credit_info(PRE_TABLES.PT_SORS)
         debt = dbprovider.get_credit_info(PRE_TABLES.PT_DEBT)
         app = dbprovider.db_get_frames_by_facetype(ft=MSP_CLASS.MSP_UL.value)
+        no_outliers=pd.DataFrame()
+    #    for item in okatos.itertuples():
+    #        subset=app.loc[app['region']==item.okato_reg]
+    #        if(len(subset)>0):
+    #            no_outliers=pd.concat([no_outliers,remove_outliers(subset,'sworkers')],axis=0,ignore_index=True)
+     #   app_ul=no_outliers
         asyncio.run(write_log(message=f'Merge DF for UL:{dt.datetime.now()}', severity=SEVERITY.INFO))
         raw_data = df_fill_credit_apps(typeface=MSP_CLASS.MSP_UL, sors_frame=sors, debt_frame=debt,
                                        app_frame=app, dates_frame=regdates)
         app = dbprovider.db_get_frames_by_facetype(ft=MSP_CLASS.MSP_FL.value)
+#        for item in okatos.itertuples():
+#            subset=app.loc[app['region']==item.okato_reg]
+#            if(len(subset)>0):
+#                no_outliers=pd.concat([no_outliers,remove_outliers(subset,'sworkers')],axis=0,ignore_index=True)
+#        app_fl=no_outliers
         asyncio.run(write_log(message=f'Merge DF for FL:{dt.datetime.now()}', severity=SEVERITY.INFO))
         raw_data_2 = df_fill_credit_apps(typeface=MSP_CLASS.MSP_FL, sors_frame=sors, debt_frame=debt,
                                          app_frame=app, dates_frame=regdates)
@@ -132,13 +141,7 @@ if __name__ == '__main__':
                                                              is_multiclass=True)
         binary_data = df_create_raw_data(db_provider=dbprovider, appframe=raw_data_total, is_multiclass=False)
 
-#        tf_learn_model(binary_data, pct_val=0.15,pct_train=0.1, is_multiclass=False,skiptree=True)
- #       tf_learn_model(binary_data, pct_val=0.15,pct_train=0.1, is_multiclass=False,skiptree=True,
- #                      features=DF_FEATURES.DFF_CREDS,tface=MSP_CLASS.MSP_UL)
-#        tf_learn_model(binary_data, pct=0.15, is_multiclass=False, features=DF_FEATURES.DFF_CREDS)
-
-        tf_learn_model([mclass_data, boundaries, labels], pct_val=0.15,pct_train=0.1, is_multiclass=True)
- #       sk_learn_model(raw_data_total, models_class=AI_MODELS.AI_CLASSIFIERS, is_multiclass=False)
- #       sk_learn_model([mclass_data, boundaries, labels], models_class=AI_MODELS.AI_CLASSIFIERS, is_multiclass=True)
- #       sk_learn_model([mclass_data, boundaries, labels], models_class=AI_MODELS.AI_REGRESSORS, is_multiclass=True)
+        #tf_learn_model(binary_data, pct_val=0.15,pct_train=0.1, classifier=TF_OPTIONS.TF_NN_BINARY)
+        #tf_learn_model([mclass_data, boundaries, labels], pct_val=0.15,pct_train=0.1,classifier=TF_OPTIONS.TF_NN_MULTU)
+        tf_learn_model(binary_data,0.15,0.1,TF_OPTIONS.TF_LSTM)
     asyncio.run(write_log(message=f'finished at:{dt.datetime.now()}', severity=SEVERITY.INFO))

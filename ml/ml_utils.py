@@ -1,33 +1,43 @@
-import asyncio
-import itertools
-import sys
-
-import pandas as pd
-from keras import Model
 import tensorflow as tf
+from keras import Model,Sequential
+from tensorflow.keras.layers import Dense, LSTM, Embedding
 from tensorflow import keras as ks
-from statsmodels.tsa.seasonal import seasonal_decompose
-import numpy as np
-from scipy import stats
-
-from apputils.log import write_log
-from config.appconfig import SEVERITY
 
 
 def create_baseline_model(hidden_units, features, output):
     inputs = ks.layers.Input((len(features),))
-    features = ks.layers.BatchNormalization()(inputs)
-    idx = 1
+    flats=ks.layers.Flatten()(inputs)
+    norms= ks.layers.BatchNormalization()(flats)
     for units in hidden_units:
-        features = ks.layers.Dense(units, activation="leaky_relu")(features)
-        idx += 1
-        if idx % 2 == 0:
-            features = ks.layers.Dropout(0.2)(features)
+        norms = ks.layers.Dense(units, activation="leaky_relu",kernel_initializer='he_normal')(norms)
     # The output is deterministic: a single point estimate
-    features = tf.keras.layers.ActivityRegularization(l1=0.001, l2=0.001)(features)
-    outputs = ks.layers.Dense(units=output, activation="softmax")(features)
+    dropout=ks.layers.Dropout(0.2)(norms)
+    outputs = ks.layers.Dense(units=output, activation="sigmoid")(dropout)
     model = Model(inputs=inputs, outputs=outputs)
     return model
 
 
-
+def create_lstm_model(hidden_units,features,output,ds,internal_activation,result_activation):
+    EMBEDDING_DIM=len(features)
+    model=Sequential()
+    model.add(ks.layers.Input((EMBEDDING_DIM,)))
+    model.add(Embedding(len(ds),EMBEDDING_DIM))
+    model.add(LSTM(units=256, return_sequences=True))
+    model.add(ks.layers.Dropout(0.2))
+    model.add(LSTM(units=256, return_sequences=True))
+    model.add(ks.layers.Dropout(0.2))
+    model.add(LSTM(units=256, return_sequences=True))
+    model.add(ks.layers.Dropout(0.2))
+    model.add(LSTM(units=256,activation="leaky_relu"))
+    model.add(ks.layers.Dropout(0.2))
+    model.add(Dense(units=1))
+    model.add(ks.layers.Dropout(0.2))
+    model.add(Dense(units=1,activation='sigmoid'))
+ #   embedding_layer=Embedding(len(ds),EMBEDDING_DIM)(inputs)
+ #   lstm_layer_1=LSTM(hidden_units,activation=internal_activation,return_sequences=True)(embedding_layer)
+ #   bidi=ks.layers.Bidirectional(LSTM(hidden_units,activation=internal_activation))(lstm_layer_1)
+ #   outputs=ks.layers.Dropout(0.2)(bidi)
+ #   outputs=Dense(int(hidden_units/4),activation=internal_activation)(outputs)
+ #   outputs=ks.layers.Dense(output,activation=result_activation,kernel_initializer="he_normal")(outputs)
+ #model=Model(inputs,outputs)
+    return model
