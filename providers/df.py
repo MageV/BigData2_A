@@ -21,7 +21,7 @@ def df_clean_for_ai(df: pd.DataFrame, dbprovider, msp_type, multiclass=False):
     df_o = pd.DataFrame()
     df_mm = dbprovider.db_get_workers_limits(msp_type)
     for item in okatos.itertuples():
- #       asyncio.run(write_log(message=f'OKATO:{item.region}', severity=SEVERITY.INFO))
+        #       asyncio.run(write_log(message=f'OKATO:{item.region}', severity=SEVERITY.INFO))
         subset = df[df['region'] == item.region]
         df_1 = df_recode_workers(subset)
         df_o = pd.concat([df_o, df_1], axis=0, ignore_index=True)
@@ -64,7 +64,7 @@ def df_clean(db_provider, appframe, msp_type: MSP_CLASS = MSP_CLASS.MSP_UL, is_m
     # raw_data["facetype"] = msp_type.value
     else:
         raw_data = appframe.copy(deep=True)
-        raw_data, boundaries, labels = multiclass_binning(raw_data, 'sworkers')
+        raw_data, boundaries, labels = multiclass_binning(raw_data, 'sworkers', classes=8)
         raw_data.drop(['date_reg', 'sworkers'], axis=1, inplace=True)
         return raw_data, boundaries, labels
 
@@ -84,3 +84,16 @@ def df_create_raw_data(db_provider, appframe, is_multiclass):
         return raw_data, boundaries, labels
 
 
+def df_remove_outliers(df, okatos, estims):
+    returns_df = pd.DataFrame()
+    if len(df) > 0:
+        for item in okatos.itertuples():
+            dfs = df.loc[df["region"] == item.okato_reg]
+            mid = dfs[estims].mean()
+            sigma = dfs[estims].std()
+            out_ix = dfs[(dfs[estims] < mid - 3 * sigma) | (df[estims] > mid + 3 * sigma)].index
+            out_ix = list(set(out_ix))
+            dfs.loc[out_ix,'sworkers']=mid
+            returns_df = pd.concat([returns_df, dfs], axis=0, ignore_index=True)
+        return returns_df
+    return None

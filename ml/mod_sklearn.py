@@ -45,6 +45,8 @@ def sk_learn_model(dataset, features=None, models_class=AI_MODELS.AI_REGRESSORS,
         raw_data.dropna(inplace=True)
     #raw_data=raw_data.dropna(inplace=True)
     # построение исходных данных модели
+    raw_data['dead_credits'] = raw_data['debt_mass'] / raw_data['credits_mass']
+    raw_data = raw_data.drop(['debt_mass', 'credits_mass'], axis=1)
     frame_cols = raw_data.columns.tolist()
     if not features.__contains__('*'):
         criteria_list = [x for x in frame_cols if x not in features]
@@ -60,7 +62,7 @@ def sk_learn_model(dataset, features=None, models_class=AI_MODELS.AI_REGRESSORS,
                                                             shuffle=True, random_state=42, stratify=df_Y)
 
         class_classifiers = False
-        scalers = [None, SplineTransformer(degree=4, n_knots=8), StandardScaler(), MinMaxScaler(),
+        scalers = [StandardScaler(), MinMaxScaler(), SplineTransformer(degree=4, n_knots=8),
                    RobustScaler(), PowerTransformer(method='yeo-johnson', standardize=True),
                    QuantileTransformer(), ]
         models_beyes = [GaussianNB(), BernoulliNB()]
