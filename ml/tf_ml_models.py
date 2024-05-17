@@ -48,11 +48,5 @@ def create_lstm_model(features, output, ds):
     model.add(Dense(units=256, kernel_initializer="he_normal",activation="leaky_relu"))
     model.add(ks.layers.Flatten())
     model.add(Dense(units=1, activation='sigmoid'))
-    #   embedding_layer=Embedding(len(ds),EMBEDDING_DIM)(inputs)
-    #   lstm_layer_1=LSTM(hidden_units,activation=internal_activation,return_sequences=True)(embedding_layer)
-    #   bidi=ks.layers.Bidirectional(LSTM(hidden_units,activation=internal_activation))(lstm_layer_1)
-    #   outputs=ks.layers.Dropout(0.2)(bidi)
-    #   outputs=Dense(int(hidden_units/4),activation=internal_activation)(outputs)
-    #   outputs=ks.layers.Dense(output,activation=result_activation,kernel_initializer="he_normal")(outputs)
-    #model=Model(inputs,outputs)
+
     return model
