@@ -11,8 +11,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 
 from apputils.log import write_log
-from apputils.utils import remove_outliers
-from ml.ml_utils import *
+from ml.tf_ml_models import *
 from providers.ui import *
 from config.appconfig import *
 

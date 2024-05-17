@@ -23,7 +23,7 @@ from sklearn.preprocessing import RobustScaler, StandardScaler, MinMaxScaler, Qu
 from sklearn.svm import SVR, NuSVR, LinearSVR, SVC, LinearSVC
 from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
 
-from ml.ai_hyper import *
+from ml.sklearn_hyper import *
 from providers.db_clickhouse import *
 from providers.df import df_clean
 
