@@ -85,9 +85,7 @@ class AI_MODELS(Enum):
     AI_ELASTIC = "_elastic_"
 
 
-class DF_FEATURES(Enum):
-    DFF_CREDS = ['region', 'credits_mass', 'typeface', 'estimated']
-    DFF_DEBTS = ['region', 'debt_mass', 'typeface', 'estimated']
+ESTIM_FACTORS=["credits_mass,debt_mass"]
 
 
 class MSP_CLASS(Enum):

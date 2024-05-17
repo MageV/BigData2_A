@@ -4,6 +4,8 @@ import multiprocessing
 import joblib
 from sklearnex import patch_sklearn
 
+from apputils.utils import test_correllation
+
 patch_sklearn()
 from joblib import parallel_backend
 from sklearn import metrics
@@ -37,17 +39,18 @@ def sk_learn_model(dataset, features=None, models_class=AI_MODELS.AI_REGRESSORS,
     best_scaler = None
     models_results = {}
     if not is_multiclass:
-        raw_data=dataset.copy(deep=True)
+        raw_data = dataset.copy(deep=True)
     else:
-        raw_data=dataset[0].copy(deep=True)
-        boundaries=dataset[1]
+        raw_data = dataset[0].copy(deep=True)
+        boundaries = dataset[1]
         labels = dataset[2]
         raw_data.dropna(inplace=True)
     #raw_data=raw_data.dropna(inplace=True)
     # построение исходных данных модели
-    raw_data['dead_credits'] = raw_data['debt_mass'] / raw_data['credits_mass']
-    raw_data = raw_data.drop(['debt_mass', 'credits_mass'], axis=1)
+    #raw_data['dead_credits'] = raw_data['debt_mass'] / raw_data['credits_mass']
+    #raw_data = raw_data.drop(['debt_mass', 'credits_mass'], axis=1)
     frame_cols = raw_data.columns.tolist()
+
     if not features.__contains__('*'):
         criteria_list = [x for x in frame_cols if x not in features]
     else:

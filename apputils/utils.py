@@ -2,8 +2,10 @@ import asyncio
 import datetime
 import datetime as dt
 import glob
+import itertools
 import os
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from scipy.stats import pearsonr,spearmanr
 
 import numpy as np
 import pandas
@@ -146,48 +148,6 @@ def multiclass_binning(frame, col_name, classes=6):
     frame[binned], boundaries = pd.qcut(frame[col_name], q=classes, precision=1, retbins=True, labels=labels)
     return frame, boundaries, labels
 
-#   unused
-#   def detect_distribution(data):
-#    dist_names = ["norm", "exponweib", "weibull_max", "weibull_min", "pareto", "genextreme"]
-#    dist_results = []
-#    params = {}
-#    for dist_name in dist_names:
-#        dist = getattr(st, dist_name)
-#        param = dist.fit(data)
-#        params[dist_name] = param
-#        # Applying the Kolmogorov-Smirnov test
-#        D, p = st.kstest(data, dist_name, args=param)
-#        print("p value for " + dist_name + " = " + str(p))
-#        dist_results.append((dist_name, p))
-
-    # select the best fitted distribution
-#    best_dist, best_p = (max(dist_results, key=lambda item: item[1]))
-#    # store the name of the best fit and its p value#
-
-#    print("Best fitting distribution: " + str(best_dist))
-#    print("Best p value: " + str(best_p))
-#    print("Parameters for the best fit: " + str(params[best_dist]))
-#    return best_dist, best_p, params[best_dist]
-
-#unused
-#   def prepare_con_mat(con_mat, classes):
-#    tf.experimental.numpy.experimental_enable_numpy_behavior()
-#    con_mat_norm = np.around(con_mat.astype('float') / con_mat.sum(axis=1)[:, np.newaxis], decimals=2)
-#    con_mat_df = pd.DataFrame(con_mat_norm,
-#                              index=classes,
-#                              columns=classes)
-#    return con_mat_df
-
-#   obsolete
-#   def remove_outliers(df, colname):
-#    Q1 = np.percentile(df[colname], 25, method='midpoint')
-#    Q3 = np.percentile(df[colname], 75, method='midpoint')
-#    IQR = Q3 - Q1
-#    upper = Q3 + 1.5 * IQR
-#    lower = Q1 - 1.5 * IQR
-#    df.loc[(df[colname] >= lower) & (df[colname] <= upper), colname] = df[colname].median()
-#    return df
-
 
 def preprocess_xml(file_list, processors_count, db_provider, debug=False):
     if debug:
@@ -219,3 +179,14 @@ def preprocess_xml(file_list, processors_count, db_provider, debug=False):
             asyncio.run(write_log(message=f'Error:{ex}', severity=SEVERITY.ERROR))
         result = db_provider.db_get_minmax()
         return result
+
+def test_correllation(df,feature_1,feature_2):
+    asyncio.run(write_log(message=f'Verify :{feature_1}', severity=SEVERITY.INFO))
+    pearson_corr,p_value_p=pearsonr(df[feature_1],df[feature_2])
+    spearmanr_corr,p_value_s=spearmanr(df[feature_1],df[feature_2])
+    if p_value_p<0.05 and p_value_s<0.05:
+        return True
+    return False
+
+def combines(input_list):
+    return  list(itertools.combinations(input_list,2))

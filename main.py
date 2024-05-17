@@ -6,7 +6,8 @@ import warnings
 
 from apputils.archivers import ArchiveManager
 from apputils.observers import ZipFileObserver
-from apputils.utils import drop_zip, drop_xml, drop_csv, drop_xlsx, preprocess_xml
+from apputils.utils import drop_zip, drop_xml, drop_csv, drop_xlsx, preprocess_xml, test_correllation
+from ml.mod_sklearn import sk_learn_model
 from ml.mod_tflow import tf_learn_model
 from providers.df import *
 from providers.web import WebScraper
@@ -25,6 +26,7 @@ def app_init():
 
 if __name__ == '__main__':
     freeze_support()
+    no_estim = False
     asyncio.run(write_log(message=f'Started at:{dt.datetime.now()}', severity=SEVERITY.INFO))
     archive_manager, parser, processors, df, dbprovider = app_init()
     filelist = glob.glob(XML_STORE + '*.xml')
@@ -80,7 +82,7 @@ if __name__ == '__main__':
         sors = dbprovider.get_credit_info(PRE_TABLES.PT_SORS)
         debt = dbprovider.get_credit_info(PRE_TABLES.PT_DEBT)
         app = dbprovider.db_get_frames_by_facetype(ft=MSP_CLASS.MSP_UL.value)
-        app=df_remove_outliers(app,okatos,"sworkers")
+        app = df_remove_outliers(app, okatos, "sworkers")
         asyncio.run(write_log(message=f'Merge DF for UL:{dt.datetime.now()}', severity=SEVERITY.INFO))
         raw_data = df_fill_credit_apps(typeface=MSP_CLASS.MSP_UL, sors_frame=sors, debt_frame=debt,
                                        app_frame=app, dates_frame=regdates)
@@ -90,18 +92,24 @@ if __name__ == '__main__':
         raw_data_2 = df_fill_credit_apps(typeface=MSP_CLASS.MSP_FL, sors_frame=sors, debt_frame=debt,
                                          app_frame=app, dates_frame=regdates)
         raw_data_total = pd.concat([raw_data, raw_data_2], axis=0, ignore_index=True)
-        asyncio.run(write_log(message=f'Finish for app_rows:FL:{dt.datetime.now()}', severity=SEVERITY.INFO))
-        gc.collect()
-        mclass_data, boundaries, labels = df_create_raw_data(db_provider=dbprovider, appframe=raw_data_total,
-                                                             is_multiclass=True)
-        binary_data = df_create_raw_data(db_provider=dbprovider, appframe=raw_data_total, is_multiclass=False)
-        tf_learn_model(binary_data, 0.25, 0.15, TF_OPTIONS.TF_LSTM)
-        #sk_learn_model([mclass_data, boundaries, labels], features=None,
-        #               models_class=AI_MODELS.AI_REGRESSORS, is_multiclass=True)
-        #sk_learn_model(binary_data, features=None, models_class=AI_MODELS.AI_CLASSIFIERS, is_multiclass=False)
-        #tf_learn_model([mclass_data, boundaries, labels], pct_val=0.20, pct_train=0.15,
-        #              classifier=TF_OPTIONS.TF_NN_MULTU)
-        # tf_learn_model(binary_data, pct_val=0.20,pct_train=0.15, classifier=TF_OPTIONS.TF_NN_BINARY)
-        #   tf_learn_model(binary_data, 0.15, 0.1, TF_OPTIONS.TF_TREES_BINARY)
-        # tf_learn_model(binary_data,0.15,0.1,TF_OPTIONS.TF_NN_BINARY)
-    asyncio.run(write_log(message=f'finished at:{dt.datetime.now()}', severity=SEVERITY.INFO))
+        stat_meaning = list(
+            map(lambda x: test_correllation(raw_data_total, feature_1=x, feature_2="estimated"), ESTIM_FACTORS))
+        if not any(stat_meaning):
+            no_estim = True
+            asyncio.run(write_log(message=f'Nothing to estimate', severity=SEVERITY.ERROR))
+        if not no_estim:
+            asyncio.run(write_log(message=f'Finish for app_rows:FL:{dt.datetime.now()}', severity=SEVERITY.INFO))
+            gc.collect()
+            mclass_data, boundaries, labels = df_create_raw_data(db_provider=dbprovider, appframe=raw_data_total,
+                                                                 is_multiclass=True)
+            binary_data = df_create_raw_data(db_provider=dbprovider, appframe=raw_data_total, is_multiclass=False)
+            #tf_learn_model(binary_data, 0.25, 0.15, TF_OPTIONS.TF_LSTM)
+            sk_learn_model([mclass_data, boundaries, labels], features=None,
+                           models_class=AI_MODELS.AI_REGRESSORS, is_multiclass=True)
+            #sk_learn_model(binary_data, features=None, models_class=AI_MODELS.AI_CLASSIFIERS, is_multiclass=False)
+            #tf_learn_model([mclass_data, boundaries, labels], pct_val=0.20, pct_train=0.15,
+            #              classifier=TF_OPTIONS.TF_NN_MULTU)
+            # tf_learn_model(binary_data, pct_val=0.20,pct_train=0.15, classifier=TF_OPTIONS.TF_NN_BINARY)
+            #   tf_learn_model(binary_data, 0.15, 0.1, TF_OPTIONS.TF_TREES_BINARY)
+            # tf_learn_model(binary_data,0.15,0.1,TF_OPTIONS.TF_NN_BINARY)
+        asyncio.run(write_log(message=f'finished at:{dt.datetime.now()}', severity=SEVERITY.INFO))
