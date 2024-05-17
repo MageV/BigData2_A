@@ -14,6 +14,7 @@ CREATE TABLE app_storage.app_cbr
 ENGINE = MergeTree
 ORDER BY date_
 SETTINGS index_granularity = 8192;
+
 -- app_storage.app_row definition
 
 CREATE TABLE app_storage.app_row
@@ -31,40 +32,6 @@ CREATE TABLE app_storage.app_row
 )
 ENGINE = MergeTree
 ORDER BY date_reg
-SETTINGS index_granularity = 8192;
-
--- app_storage.okato definition
-
-CREATE TABLE app_storage.okato
-(
-
-    `okato_code` Int64,
-
-    `regname` String
-)
-ENGINE = MergeTree
-ORDER BY okato_code
-SETTINGS index_granularity = 8192;
-
--- app_storage.sors definition
-
-CREATE TABLE app_storage.sors
-(
-
-    `region` String,
-
-    `total` Float64,
-
-    `msp_total` Float64,
-
-    `il_total` Float64,
-
-    `date_rep` Date,
-
-    `okato` Int32
-)
-ENGINE = MergeTree
-ORDER BY date_rep
 SETTINGS index_granularity = 8192;
 
 -- app_storage.debt definition
@@ -87,6 +54,42 @@ CREATE TABLE app_storage.debt
 ENGINE = MergeTree
 ORDER BY date_rep
 SETTINGS index_granularity = 8192;
+
+-- app_storage.okato definition
+
+CREATE TABLE app_storage.okato
+(
+
+    `okato_code` Int64,
+
+    `regname` String
+)
+ENGINE = MergeTree
+ORDER BY okato_code
+SETTINGS index_granularity = 8192;
+
+
+-- app_storage.sors definition
+
+CREATE TABLE app_storage.sors
+(
+
+    `region` String,
+
+    `total` Float64,
+
+    `msp_total` Float64,
+
+    `il_total` Float64,
+
+    `date_rep` Date,
+
+    `okato` Int32
+)
+ENGINE = MergeTree
+ORDER BY date_rep
+SETTINGS index_granularity = 8192;
+
 
 -- app_storage.reduced_app_view source
 
@@ -145,12 +148,60 @@ CREATE VIEW app_storage.regions
 AS SELECT DISTINCT region
 FROM app_storage.app_row AS ar;
 
--- app_storage.regions source
+-- app_storage.serv_app_rows source
 
-CREATE VIEW app_storage.regions
+CREATE VIEW app_storage.serv_app_rows
 (
 
-    `region` Int32
+    `date_reg` Date,
+
+    `typeface` Int32
 )
-AS SELECT DISTINCT region
-FROM app_storage.app_row AS ar;
+AS SELECT DISTINCT
+    date_reg AS date_reg,
+
+    typeface
+FROM app_storage.app_row AS ar
+ORDER BY date_reg ASC;
+
+-- app_storage.serv_app_rows_reduced source
+
+CREATE VIEW app_storage.serv_app_rows_reduced
+(
+
+    `date_reg` Date,
+
+    `region` Int32,
+
+    `typeface` Int32,
+
+    `workers` Int64
+)
+AS SELECT
+    date_reg,
+
+    region,
+
+    typeface,
+
+    sum(workers) AS workers
+FROM app_storage.app_row AS ar
+GROUP BY
+    date_reg,
+
+    region,
+
+    typeface
+ORDER BY
+    region ASC,
+
+    date_reg ASC;
+    -- app_storage.serv_sors_regs source
+
+CREATE VIEW app_storage.serv_sors_regs
+(
+
+    `okato_reg` Int32
+)
+AS SELECT DISTINCT okato AS okato_reg
+FROM app_storage.sors AS ar;
