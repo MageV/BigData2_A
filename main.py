@@ -4,12 +4,9 @@ import multiprocessing
 from multiprocessing import freeze_support
 import warnings
 
-import pandas as pd
-
 from apputils.archivers import ArchiveManager
 from apputils.observers import ZipFileObserver
-from apputils.utils import loadxml, drop_zip, drop_xml, drop_csv, drop_xlsx, remove_outliers
-from ml.mod_sklearn import sk_learn_model
+from apputils.utils import drop_zip, drop_xml, drop_csv, drop_xlsx, preprocess_xml
 from ml.mod_tflow import tf_learn_model
 from providers.df import *
 from providers.web import WebScraper
@@ -24,38 +21,6 @@ def app_init():
     prc = 1 if (multiprocessing.cpu_count() - 4) == 0 else multiprocessing.cpu_count() - 4
     frame = pd.DataFrame(columns=['date_', 'workers', 'region', 'typeface', 'workers_sum'])  # 'okved',
     return a_manager, webparser, prc, frame, dbprovider
-
-
-def preprocess_xml(file_list, processors_count, db_provider, debug=False):
-    if debug:
-        result = db_provider.db_get_minmax()
-        return result
-    big_frame = pd.DataFrame(columns=['date_reg', 'workers', 'region', 'typeface'])  # 'okved',
-    asyncio.run(write_log(message=f'Parse started at:{dt.datetime.now()}', severity=SEVERITY.INFO))
-    with (ProcessPoolExecutor(max_workers=processors_count,
-                              max_tasks_per_child=len(file_list) // processors_count + 20) as pool):
-        futures = [pool.submit(loadxml, item) for item in file_list]
-        row_counter = 0
-        for future in as_completed(futures):
-            row_counter += 1
-            result = future.result()
-            big_frame = pd.concat([big_frame, result], axis=0, ignore_index=True)
-            asyncio.run(write_log(message=f'files processed:{row_counter} at {dt.datetime.now()}',
-                                  severity=SEVERITY.INFO))
-            del result
-        try:
-            #    big_frame['ratekey'] = 0.0
-            big_frame['credits_mass'] = 0.0
-            settings = {'async_insert': 1}
-            asyncio.run(write_log(message=f'Trying to store data:{dt.datetime.now()}',
-                                  severity=SEVERITY.INFO))
-            db_provider.db_insert_data_app_row(big_frame)
-            asyncio.run(write_log(message=f'Success to store data:{dt.datetime.now()}',
-                                  severity=SEVERITY.INFO))
-        except Exception as ex:
-            asyncio.run(write_log(message=f'Error:{ex}', severity=SEVERITY.ERROR))
-        result = db_provider.db_get_minmax()
-        return result
 
 
 if __name__ == '__main__':

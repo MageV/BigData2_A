@@ -1,11 +1,6 @@
-import numpy as np
-import pandas as pd
-
-from apputils.utils import multiclass_binning, detect_distribution
-from scipy import stats
+from apputils.utils import multiclass_binning
 
 from providers.db_clickhouse import *
-import pandasql as ps
 
 
 def df_recode_workers(df: pd.DataFrame):
@@ -97,3 +92,5 @@ def df_remove_outliers(df, okatos, estims):
             returns_df = pd.concat([returns_df, dfs], axis=0, ignore_index=True)
         return returns_df
     return None
+
+

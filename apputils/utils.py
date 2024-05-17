@@ -1,9 +1,12 @@
 import asyncio
+import datetime
 import datetime as dt
 import glob
 import os
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 import numpy as np
+import pandas
 import pandas as pd
 import tensorflow as tf
 from bs4 import BeautifulSoup
@@ -12,6 +15,8 @@ import scipy.stats as st
 from apputils.log import write_log
 from config.appconfig import *
 from pathlib import Path
+
+from config.appconfig import SEVERITY
 
 
 def list_inner_join(a: list, b: list):
@@ -182,3 +187,35 @@ def remove_outliers(df,colname):
     lower = Q1 - 1.5 * IQR
     df.loc[(df[colname] >= lower) & (df[colname] <= upper),colname]=df[colname].median()
     return df
+
+
+def preprocess_xml(file_list, processors_count, db_provider, debug=False):
+    if debug:
+        result = db_provider.db_get_minmax()
+        return result
+    big_frame = pd.DataFrame(columns=['date_reg', 'workers', 'region', 'typeface'])  # 'okved',
+    asyncio.run(write_log(message=f'Parse started at:{dt.datetime.now()}', severity=SEVERITY.INFO))
+    with (ProcessPoolExecutor(max_workers=processors_count,
+                              max_tasks_per_child=len(file_list) // processors_count + 20) as pool):
+        futures = [pool.submit(loadxml, item) for item in file_list]
+        row_counter = 0
+        for future in as_completed(futures):
+            row_counter += 1
+            result = future.result()
+            big_frame = pd.concat([big_frame, result], axis=0, ignore_index=True)
+            asyncio.run(write_log(message=f'files processed:{row_counter} at {dt.datetime.now()}',
+                                  severity=SEVERITY.INFO))
+            del result
+        try:
+            #    big_frame['ratekey'] = 0.0
+            big_frame['credits_mass'] = 0.0
+            settings = {'async_insert': 1}
+            asyncio.run(write_log(message=f'Trying to store data:{dt.datetime.now()}',
+                                  severity=SEVERITY.INFO))
+            db_provider.db_insert_data_app_row(big_frame)
+            asyncio.run(write_log(message=f'Success to store data:{dt.datetime.now()}',
+                                  severity=SEVERITY.INFO))
+        except Exception as ex:
+            asyncio.run(write_log(message=f'Error:{ex}', severity=SEVERITY.ERROR))
+        result = db_provider.db_get_minmax()
+        return result
