@@ -95,14 +95,13 @@ if __name__ == '__main__':
         mclass_data, boundaries, labels = df_create_raw_data(db_provider=dbprovider, appframe=raw_data_total,
                                                              is_multiclass=True)
         binary_data = df_create_raw_data(db_provider=dbprovider, appframe=raw_data_total, is_multiclass=False)
-
-        #tf_learn_model(binary_data, pct_val=0.20,pct_train=0.15, classifier=TF_OPTIONS.TF_NN_BINARY)
-        #   tf_learn_model(binary_data, 0.15, 0.1, TF_OPTIONS.TF_TREES_BINARY)
-        #tf_learn_model(binary_data,0.15,0.1,TF_OPTIONS.TF_NN_BINARY)
         tf_learn_model(binary_data, 0.25, 0.15, TF_OPTIONS.TF_LSTM)
         #sk_learn_model([mclass_data, boundaries, labels], features=None,
         #               models_class=AI_MODELS.AI_REGRESSORS, is_multiclass=True)
         #sk_learn_model(binary_data, features=None, models_class=AI_MODELS.AI_CLASSIFIERS, is_multiclass=False)
         #tf_learn_model([mclass_data, boundaries, labels], pct_val=0.20, pct_train=0.15,
         #              classifier=TF_OPTIONS.TF_NN_MULTU)
+        # tf_learn_model(binary_data, pct_val=0.20,pct_train=0.15, classifier=TF_OPTIONS.TF_NN_BINARY)
+        #   tf_learn_model(binary_data, 0.15, 0.1, TF_OPTIONS.TF_TREES_BINARY)
+        # tf_learn_model(binary_data,0.15,0.1,TF_OPTIONS.TF_NN_BINARY)
     asyncio.run(write_log(message=f'finished at:{dt.datetime.now()}', severity=SEVERITY.INFO))
