@@ -1,18 +1,12 @@
 import asyncio
-import datetime
 import datetime as dt
 import glob
 import itertools
 import os
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from scipy.stats import pearsonr,spearmanr
 
-import numpy as np
-import pandas
 import pandas as pd
-import tensorflow as tf
 from bs4 import BeautifulSoup
-import scipy.stats as st
 
 from apputils.log import write_log
 from config.appconfig import *
@@ -180,13 +174,6 @@ def preprocess_xml(file_list, processors_count, db_provider, debug=False):
         result = db_provider.db_get_minmax()
         return result
 
-def test_correllation(df,feature_1,feature_2):
-    asyncio.run(write_log(message=f'Verify :{feature_1}', severity=SEVERITY.INFO))
-    pearson_corr,p_value_p=pearsonr(df[feature_1],df[feature_2])
-    spearmanr_corr,p_value_s=spearmanr(df[feature_1],df[feature_2])
-    if p_value_p<0.05 and p_value_s<0.05:
-        return True
-    return False
 
 def combines(input_list):
-    return  list(itertools.combinations(input_list,2))
+    return list(itertools.combinations(input_list, 2))

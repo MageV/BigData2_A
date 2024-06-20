@@ -6,7 +6,8 @@ import warnings
 
 from apputils.archivers import ArchiveManager
 from apputils.observers import ZipFileObserver
-from apputils.utils import drop_zip, drop_xml, drop_csv, drop_xlsx, preprocess_xml, test_correllation
+from apputils.utils import drop_zip, drop_xml, drop_csv, drop_xlsx, preprocess_xml
+from apputils.T4 import lag_detect, make_stationary
 from ml.mod_sklearn import sk_learn_model
 from ml.mod_tflow import tf_learn_model
 from providers.df import *
@@ -18,10 +19,10 @@ warnings.filterwarnings("ignore")
 def app_init():
     a_manager = ArchiveManager()
     webparser = WebScraper()
-    dbprovider = DBConnector()
+    _dbprovider = DBConnector()
     prc = 1 if (multiprocessing.cpu_count() - 4) == 0 else multiprocessing.cpu_count() - 4
     frame = pd.DataFrame(columns=['date_', 'workers', 'region', 'typeface', 'workers_sum'])  # 'okved',
-    return a_manager, webparser, prc, frame, dbprovider
+    return a_manager, webparser, prc, frame, _dbprovider
 
 
 if __name__ == '__main__':
@@ -91,19 +92,22 @@ if __name__ == '__main__':
         asyncio.run(write_log(message=f'Merge DF for FL:{dt.datetime.now()}', severity=SEVERITY.INFO))
         raw_data_2 = df_fill_credit_apps(typeface=MSP_CLASS.MSP_FL, sors_frame=sors, debt_frame=debt,
                                          app_frame=app, dates_frame=regdates)
+        stat_w=make_stationary(raw_data,"sworkers")[1]
+      #  stat_c=test_stationary(raw_data,"credits_mass")[1]
+      #  stat_d=test_stationary(raw_data,"debt_mass")[1]
         raw_data_total = pd.concat([raw_data, raw_data_2], axis=0, ignore_index=True)
+        asyncio.run(write_log(message=f'Finish for app_rows:FL:{dt.datetime.now()}', severity=SEVERITY.INFO))
         stat_meaning = list(
-            map(lambda x: test_correllation(raw_data_total, feature_1=x, feature_2="estimated"), ESTIM_FACTORS))
+            map(lambda x: lag_detect(raw_data_total, feature_1=x, feature_2="sworkers")[1], ESTIM_FACTORS))
         if not any(stat_meaning):
             no_estim = True
             asyncio.run(write_log(message=f'Nothing to estimate', severity=SEVERITY.ERROR))
         if not no_estim:
-            asyncio.run(write_log(message=f'Finish for app_rows:FL:{dt.datetime.now()}', severity=SEVERITY.INFO))
             gc.collect()
             mclass_data, boundaries, labels = df_create_raw_data(db_provider=dbprovider, appframe=raw_data_total,
                                                                  is_multiclass=True)
             binary_data = df_create_raw_data(db_provider=dbprovider, appframe=raw_data_total, is_multiclass=False)
-            #tf_learn_model(binary_data, 0.25, 0.15, TF_OPTIONS.TF_LSTM)
+
             sk_learn_model([mclass_data, boundaries, labels], features=None,
                            models_class=AI_MODELS.AI_REGRESSORS, is_multiclass=True)
             #sk_learn_model(binary_data, features=None, models_class=AI_MODELS.AI_CLASSIFIERS, is_multiclass=False)
@@ -112,4 +116,5 @@ if __name__ == '__main__':
             # tf_learn_model(binary_data, pct_val=0.20,pct_train=0.15, classifier=TF_OPTIONS.TF_NN_BINARY)
             #   tf_learn_model(binary_data, 0.15, 0.1, TF_OPTIONS.TF_TREES_BINARY)
             # tf_learn_model(binary_data,0.15,0.1,TF_OPTIONS.TF_NN_BINARY)
+            # tf_learn_model(binary_data, 0.25, 0.15, TF_OPTIONS.TF_LSTM)
         asyncio.run(write_log(message=f'finished at:{dt.datetime.now()}', severity=SEVERITY.INFO))

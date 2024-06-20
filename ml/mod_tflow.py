@@ -44,7 +44,7 @@ def tf_learn_model(inp_ds, pct_val, pct_train, classifier, tface=None):
     elif classifier == TF_OPTIONS.TF_NN_BINARY:
         run_tf_nn_binary(tf_train, tf_val, tf_test, num_train_examples, batch_size, features, num_epochs)
     elif classifier == TF_OPTIONS.TF_NN_MULTU:
-        run_tf_nn_multi(raw_data, features, num_epochs, inp_ds[2] )
+        run_tf_nn_multi(raw_data, features, num_epochs, inp_ds[2])
     elif classifier == TF_OPTIONS.TF_LSTM:
         run_tf_lstm(raw_data, features, 1, batch_size, num_epochs)
 
@@ -161,9 +161,9 @@ def run_tf_nn_multi(ds, features, num_epochs, outputs_len, batch_size=1):
         model_multiclass.compile(optimizer="adam",
                                  loss="mae", metrics=['mse'])
         model_multiclass.summary()
-        history = model_multiclass.fit(X_train,y_train, epochs=num_epochs,
+        history = model_multiclass.fit(X_train, y_train, epochs=num_epochs,
                                        validation_split=0.25, shuffle=True)
-        estim = model_multiclass.evaluate(X_test,y_test, batch_size=batch_size,
+        estim = model_multiclass.evaluate(X_test, y_test, batch_size=batch_size,
                                           return_dict=True)
         do_plot_history_seq(history, "Sequential NN muliclass classification", metric=['mse'])
         return model_multiclass
@@ -192,4 +192,10 @@ def run_tf_lstm(ds, features, output, batch_size, numepochs):
                                   f"1   {estim['FalsePositives']}     {estim['TruePositives']}",
                           severity=SEVERITY.INFO))
     do_plot_history_seq(history, "Sequential NN binary classification", ["auc"])
-    pass
+
+
+#ds - raw_data_total from main
+def run_ts_lstm_model(ds, estimated_what, horizon, noFL):
+    oper_ds = ds.copy(deep=True)
+    if noFL:
+        pass

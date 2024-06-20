@@ -4,7 +4,7 @@ import multiprocessing
 import joblib
 from sklearnex import patch_sklearn
 
-from apputils.utils import test_correllation
+from apputils.T4 import test_correllation
 
 patch_sklearn()
 from joblib import parallel_backend

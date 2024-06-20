@@ -9,7 +9,7 @@ from apputils.log import write_log
 from config.appconfig import *
 
 
-# from providers.web import get_rates_cbr
+
 
 class DBConnector:
 

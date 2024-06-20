@@ -45,8 +45,20 @@ def create_lstm_model(features, output, ds):
     model.add(Bidirectional(LSTM(units=256, return_sequences=True)))
     model.add(Bidirectional(LSTM(units=256, return_sequences=True)))
     model.add(LSTM(units=256))
-    model.add(Dense(units=256, kernel_initializer="he_normal",activation="leaky_relu"))
+    model.add(Dense(units=256, kernel_initializer="he_normal", activation="leaky_relu"))
     model.add(ks.layers.Flatten())
     model.add(Dense(units=1, activation='sigmoid'))
 
+    return model
+
+
+
+def create_ts_lstm_model(ds, horizon):
+    DIMS = len(ds)
+    inputs = ks.layers.Input(shape=DIMS)
+    ax = ks.layers.Lambda(lambda x: tf.expand_dims(x, axis=1))(inputs)
+    ax = LSTM(128, return_sequences=True)(ax)
+    ax = LSTM(128)(ax)
+    outputs = Dense(horizon)(ax)
+    model = Model(inputs, outputs)
     return model

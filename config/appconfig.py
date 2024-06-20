@@ -85,7 +85,7 @@ class AI_MODELS(Enum):
     AI_ELASTIC = "_elastic_"
 
 
-ESTIM_FACTORS=["credits_mass,debt_mass"]
+ESTIM_FACTORS=["credits_mass","debt_mass"]
 
 
 class MSP_CLASS(Enum):
